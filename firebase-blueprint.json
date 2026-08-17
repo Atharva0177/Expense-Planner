@@ -1,0 +1,195 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Household": {
+      "title": "Household",
+      "description": "Shared household container",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "created_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "HouseholdMember": {
+      "title": "HouseholdMember",
+      "description": "Membership of user in a household",
+      "type": "object",
+      "properties": {
+        "household_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["primary", "spouse", "dependent"] },
+        "joined_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Invite": {
+      "title": "Invite",
+      "description": "Household invitation token",
+      "type": "object",
+      "properties": {
+        "household_id": { "type": "string" },
+        "email": { "type": "string" },
+        "invite_code": { "type": "string" },
+        "role": { "type": "string", "enum": ["spouse", "dependent"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "expired"] },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "IncomeEntry": {
+      "title": "IncomeEntry",
+      "description": "Monthly income details",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "household_id": { "type": "string" },
+        "month": { "type": "string" },
+        "basic": { "type": "number" },
+        "hra": { "type": "number" },
+        "special_allowance": { "type": "number" },
+        "bonus": { "type": "number" },
+        "other": { "type": "number" },
+        "epf_deduction": { "type": "number" },
+        "professional_tax": { "type": "number" },
+        "tds": { "type": "number" },
+        "net_credited": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Transaction category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "is_default": { "type": "boolean" },
+        "user_id": { "type": "string" }
+      }
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "household_id": { "type": "string" },
+        "category_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "note": { "type": "string" },
+        "payment_mode": { "type": "string" },
+        "source": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Monthly spending budget",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "household_id": { "type": "string" },
+        "category_id": { "type": "string" },
+        "month": { "type": "string" },
+        "limit_amount": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "InvestmentAccount": {
+      "title": "InvestmentAccount",
+      "description": "Investment account entity",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "household_id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["mutual_fund", "stock", "fd", "ppf", "nps", "gold"] },
+        "folio_number": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "InvestmentHolding": {
+      "title": "InvestmentHolding",
+      "description": "Investment holding transaction or batch",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "investment_account_id": { "type": "string" },
+        "units": { "type": "number" },
+        "amount": { "type": "number" },
+        "purchase_price": { "type": "number" },
+        "purchase_date": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "InvestmentValuation": {
+      "title": "InvestmentValuation",
+      "description": "Periodic valuation record",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "investment_account_id": { "type": "string" },
+        "date": { "type": "string" },
+        "price_or_nav": { "type": "number" },
+        "total_value": { "type": "number" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/households/{householdId}": {
+      "schema": { "$ref": "#/entities/Household" },
+      "description": "Households"
+    },
+    "/household_members/{memberId}": {
+      "schema": { "$ref": "#/entities/HouseholdMember" },
+      "description": "Household membership records"
+    },
+    "/invites/{inviteId}": {
+      "schema": { "$ref": "#/entities/Invite" },
+      "description": "Household invites"
+    },
+    "/income_entries/{entryId}": {
+      "schema": { "$ref": "#/entities/IncomeEntry" },
+      "description": "Income entries"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Categories"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Transactions"
+    },
+    "/budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "Budgets"
+    },
+    "/investment_accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/InvestmentAccount" },
+      "description": "Investment accounts"
+    },
+    "/investment_holdings/{holdingId}": {
+      "schema": { "$ref": "#/entities/InvestmentHolding" },
+      "description": "Investment holdings"
+    },
+    "/investment_valuations/{valuationId}": {
+      "schema": { "$ref": "#/entities/InvestmentValuation" },
+      "description": "Investment valuations"
+    }
+  }
+}

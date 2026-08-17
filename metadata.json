@@ -1,0 +1,6 @@
+{
+  "name": "ExpensePlanner",
+  "description": "Comprehensive personal and family finance tracker with income budgeting, expenses, loans, taxes, and investment tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
