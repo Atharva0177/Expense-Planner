@@ -6,6 +6,7 @@ import {
   getDoc,
   addDoc, 
   updateDoc, 
+  deleteDoc,
   doc, 
   Timestamp 
 } from "firebase/firestore";
@@ -63,13 +64,28 @@ export async function createHousehold(userId: string, name: string, email: strin
       created_at: Timestamp.now()
     });
     
-    await addDoc(collection(db, "household_members"), {
-      household_id: docRef.id,
-      user_id: userId,
-      email,
-      role: "primary",
-      joined_at: Timestamp.now()
-    });
+    // Check if user already has an existing membership record
+    const existingQ = query(
+      collection(db, "household_members"),
+      where("user_id", "==", userId)
+    );
+    const existingSnap = await getDocs(existingQ);
+    if (!existingSnap.empty) {
+      await updateDoc(doc(db, "household_members", existingSnap.docs[0].id), {
+        household_id: docRef.id,
+        email,
+        role: "primary",
+        joined_at: Timestamp.now()
+      });
+    } else {
+      await addDoc(collection(db, "household_members"), {
+        household_id: docRef.id,
+        user_id: userId,
+        email,
+        role: "primary",
+        joined_at: Timestamp.now()
+      });
+    }
     
     clearHouseholdCache();
     clearCache();
@@ -77,6 +93,36 @@ export async function createHousehold(userId: string, name: string, email: strin
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "households");
     return "";
+  }
+}
+
+export async function updateHouseholdName(householdId: string, name: string): Promise<boolean> {
+  try {
+    await updateDoc(doc(db, "households", householdId), { name });
+    clearHouseholdCache();
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `households/${householdId}`);
+    return false;
+  }
+}
+
+export async function leaveHousehold(userId: string): Promise<boolean> {
+  try {
+    const q = query(
+      collection(db, "household_members"),
+      where("user_id", "==", userId)
+    );
+    const snapshot = await getDocs(q);
+    for (const d of snapshot.docs) {
+      await deleteDoc(doc(db, "household_members", d.id));
+    }
+    clearHouseholdCache();
+    clearCache();
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, "household_members");
+    return false;
   }
 }
 
@@ -162,14 +208,28 @@ export async function checkAndAcceptInvite(userId: string, email: string, invite
     const inviteDoc = snapshot.docs[0];
     const inviteData = inviteDoc.data() as Invite;
     
-    // Create membership
-    await addDoc(collection(db, "household_members"), {
-      household_id: inviteData.household_id,
-      user_id: userId,
-      email: email || inviteData.email,
-      role: inviteData.role || "dependent",
-      joined_at: Timestamp.now()
-    });
+    // Upsert membership
+    const existingQ = query(
+      collection(db, "household_members"),
+      where("user_id", "==", userId)
+    );
+    const existingSnap = await getDocs(existingQ);
+    if (!existingSnap.empty) {
+      await updateDoc(doc(db, "household_members", existingSnap.docs[0].id), {
+        household_id: inviteData.household_id,
+        email: email || inviteData.email,
+        role: inviteData.role || "dependent",
+        joined_at: Timestamp.now()
+      });
+    } else {
+      await addDoc(collection(db, "household_members"), {
+        household_id: inviteData.household_id,
+        user_id: userId,
+        email: email || inviteData.email,
+        role: inviteData.role || "dependent",
+        joined_at: Timestamp.now()
+      });
+    }
     
     // Mark accepted
     await updateDoc(doc(db, "invites", inviteDoc.id), { status: "accepted" });

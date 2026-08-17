@@ -14,6 +14,15 @@ import { ReportSection } from "../components/ReportSection";
 import { HouseholdSettings } from "../components/HouseholdSettings";
 import { InvestmentSection } from "../components/InvestmentSection";
 import { 
+  getTransactions, 
+  getIncomes, 
+  getBudgets, 
+  getCategories, 
+  getRecurringRules, 
+  getLoans, 
+  getGoals 
+} from "../lib/db";
+import { 
   LayoutDashboard, 
   Receipt, 
   Wallet, 
@@ -44,6 +53,27 @@ export function Dashboard() {
     const m = (d.getMonth() + 1).toString().padStart(2, '0');
     return `${d.getFullYear()}-${m}`;
   });
+
+  // Proactive background prefetching for zero-latency tab switching
+  React.useEffect(() => {
+    if (!user) return;
+    const prefetchData = async () => {
+      try {
+        await Promise.allSettled([
+          getTransactions(user.uid, currentMonth),
+          getIncomes(user.uid, currentMonth),
+          getBudgets(user.uid, currentMonth),
+          getCategories(user.uid),
+          getRecurringRules(user.uid),
+          getLoans(user.uid),
+          getGoals(user.uid)
+        ]);
+      } catch (e) {
+        // Silent background preload catch
+      }
+    };
+    prefetchData();
+  }, [user?.uid, currentMonth]);
 
   const stepMonth = (delta: number) => {
     const [year, month] = currentMonth.split("-").map(Number);
