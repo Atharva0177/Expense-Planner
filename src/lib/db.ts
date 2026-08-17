@@ -64,6 +64,41 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 const hhIdCache = new Map<string, { id?: string; time: number }>();
+const dataCache = new Map<string, { data: any; time: number }>();
+const inFlightCache = new Map<string, Promise<any>>();
+const CACHE_TTL_MS = 25000; // 25s TTL for snappy tab switches
+
+export function clearCache(prefix?: string) {
+  if (!prefix) {
+    dataCache.clear();
+    return;
+  }
+  for (const key of Array.from(dataCache.keys())) {
+    if (key.startsWith(prefix)) {
+      dataCache.delete(key);
+    }
+  }
+}
+
+async function cachedFetch<T>(key: string, fetcher: () => Promise<T>, ttl = CACHE_TTL_MS): Promise<T> {
+  const cached = dataCache.get(key);
+  if (cached && Date.now() - cached.time < ttl) {
+    return cached.data as T;
+  }
+  if (inFlightCache.has(key)) {
+    return inFlightCache.get(key) as Promise<T>;
+  }
+  const promise = fetcher().then((res) => {
+    dataCache.set(key, { data: res, time: Date.now() });
+    inFlightCache.delete(key);
+    return res;
+  }).catch((err) => {
+    inFlightCache.delete(key);
+    throw err;
+  });
+  inFlightCache.set(key, promise);
+  return promise;
+}
 
 async function getHhId(userId: string): Promise<string | undefined> {
   const cached = hhIdCache.get(userId);
@@ -84,28 +119,31 @@ async function getHhId(userId: string): Promise<string | undefined> {
 
 // --- Categories ---
 export async function getCategories(userId: string): Promise<Category[]> {
-  try {
-    const q = query(
-      collection(db, "categories"),
-      where("user_id", "in", [userId, "system"])
-    );
-    
-    const snapshot = await getDocs(q);
-    const userCategories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
-    
-    // Combine defaults and custom
-    const allCategories = [...DEFAULT_CATEGORIES, ...userCategories];
-    const unique = Array.from(new Map(allCategories.map(c => [c.name, c])).values());
-    return unique;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "categories");
-    return DEFAULT_CATEGORIES;
-  }
+  return cachedFetch(`categories_${userId}`, async () => {
+    try {
+      const q = query(
+        collection(db, "categories"),
+        where("user_id", "in", [userId, "system"])
+      );
+      
+      const snapshot = await getDocs(q);
+      const userCategories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
+      
+      // Combine defaults and custom
+      const allCategories = [...DEFAULT_CATEGORIES, ...userCategories];
+      const unique = Array.from(new Map(allCategories.map(c => [c.name, c])).values());
+      return unique;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "categories");
+      return DEFAULT_CATEGORIES;
+    }
+  }, 60000); // 1 minute for categories
 }
 
 export async function addCategory(category: Omit<Category, "id">): Promise<string> {
   try {
     const docRef = await addDoc(collection(db, "categories"), category);
+    clearCache("categories");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "categories");
@@ -115,30 +153,32 @@ export async function addCategory(category: Omit<Category, "id">): Promise<strin
 
 // --- Income ---
 export async function getIncomes(userId: string, month: string): Promise<IncomeEntry[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "income_entries"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-      where("month", "==", month)
-    );
-    
-    const snapshot = await getDocs(q);
-    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeEntry));
-    return items.sort((a, b) => {
-      const getMs = (val: any) => {
-        if (!val) return 0;
-        if (typeof val.toMillis === "function") return val.toMillis();
-        if (typeof val.getTime === "function") return val.getTime();
-        if (typeof val.seconds === "number") return val.seconds * 1000;
-        return 0;
-      };
-      return getMs(b.created_at) - getMs(a.created_at);
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "income_entries");
-    return [];
-  }
+  return cachedFetch(`incomes_${userId}_${month}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "income_entries"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
+        where("month", "==", month)
+      );
+      
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeEntry));
+      return items.sort((a, b) => {
+        const getMs = (val: any) => {
+          if (!val) return 0;
+          if (typeof val.toMillis === "function") return val.toMillis();
+          if (typeof val.getTime === "function") return val.getTime();
+          if (typeof val.seconds === "number") return val.seconds * 1000;
+          return 0;
+        };
+        return getMs(b.created_at) - getMs(a.created_at);
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "income_entries");
+      return [];
+    }
+  });
 }
 
 export async function addIncome(income: Omit<IncomeEntry, "id" | "created_at">): Promise<string> {
@@ -150,6 +190,7 @@ export async function addIncome(income: Omit<IncomeEntry, "id" | "created_at">):
       created_at: Timestamp.now()
     };
     const docRef = await addDoc(collection(db, "income_entries"), payload);
+    clearCache("incomes");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "income_entries");
@@ -161,6 +202,7 @@ export async function updateIncome(id: string, updates: Partial<IncomeEntry>): P
   try {
     const docRef = doc(db, "income_entries", id);
     await updateDoc(docRef, updates);
+    clearCache("incomes");
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `income_entries/${id}`);
   }
@@ -170,6 +212,7 @@ export async function deleteIncome(id: string): Promise<void> {
   try {
     const docRef = doc(db, "income_entries", id);
     await deleteDoc(docRef);
+    clearCache("incomes");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `income_entries/${id}`);
   }
@@ -177,25 +220,27 @@ export async function deleteIncome(id: string): Promise<void> {
 
 // --- Transactions ---
 export async function getTransactions(userId: string, monthPrefix: string): Promise<Transaction[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const startDate = `${monthPrefix}-01`;
-    const endDate = `${monthPrefix}-31`;
+  return cachedFetch(`transactions_${userId}_${monthPrefix}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const startDate = `${monthPrefix}-01`;
+      const endDate = `${monthPrefix}-31`;
 
-    const q = query(
-      collection(db, "transactions"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-      where("date", ">=", startDate),
-      where("date", "<=", endDate)
-    );
-    
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
-    return data.sort((a, b) => b.date.localeCompare(a.date));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "transactions");
-    return [];
-  }
+      const q = query(
+        collection(db, "transactions"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate)
+      );
+      
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+      return data.sort((a, b) => b.date.localeCompare(a.date));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "transactions");
+      return [];
+    }
+  });
 }
 
 export async function addTransaction(transaction: Omit<Transaction, "id" | "created_at">): Promise<string> {
@@ -207,6 +252,7 @@ export async function addTransaction(transaction: Omit<Transaction, "id" | "crea
       created_at: Timestamp.now()
     };
     const docRef = await addDoc(collection(db, "transactions"), payload);
+    clearCache("transactions");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "transactions");
@@ -218,6 +264,7 @@ export async function updateTransaction(id: string, updates: Partial<Transaction
   try {
     const docRef = doc(db, "transactions", id);
     await updateDoc(docRef, updates);
+    clearCache("transactions");
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `transactions/${id}`);
   }
@@ -227,6 +274,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   try {
     const docRef = doc(db, "transactions", id);
     await deleteDoc(docRef);
+    clearCache("transactions");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `transactions/${id}`);
   }
@@ -234,19 +282,21 @@ export async function deleteTransaction(id: string): Promise<void> {
 
 // --- Budgets ---
 export async function getBudgets(userId: string, month: string): Promise<Budget[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "budgets"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-      where("month", "==", month)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Budget));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "budgets");
-    return [];
-  }
+  return cachedFetch(`budgets_${userId}_${month}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "budgets"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
+        where("month", "==", month)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Budget));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "budgets");
+      return [];
+    }
+  });
 }
 
 export async function setBudget(budget: Omit<Budget, "id" | "created_at">): Promise<void> {
@@ -274,6 +324,7 @@ export async function setBudget(budget: Omit<Budget, "id" | "created_at">): Prom
       const docRef = doc(db, "budgets", snapshot.docs[0].id);
       await updateDoc(docRef, { limit_amount: budget.limit_amount });
     }
+    clearCache("budgets");
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "budgets");
   }
@@ -298,6 +349,7 @@ export async function cloneBudgets(userId: string, fromMonth: string, toMonth: s
         limit_amount: b.limit_amount
       });
     }
+    clearCache("budgets");
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "budgets");
   }
@@ -305,18 +357,20 @@ export async function cloneBudgets(userId: string, fromMonth: string, toMonth: s
 
 // --- Recurring Rules ---
 export async function getRecurringRules(userId: string): Promise<RecurringRule[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "recurring_rules"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RecurringRule)).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "recurring_rules");
-    return [];
-  }
+  return cachedFetch(`recurring_${userId}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "recurring_rules"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RecurringRule)).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "recurring_rules");
+      return [];
+    }
+  });
 }
 
 export async function addRecurringRule(rule: Omit<RecurringRule, "id" | "created_at">): Promise<string> {
@@ -327,6 +381,7 @@ export async function addRecurringRule(rule: Omit<RecurringRule, "id" | "created
       ...(hhId ? { household_id: hhId } : {}),
       created_at: Timestamp.now()
     });
+    clearCache("recurring");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "recurring_rules");
@@ -338,6 +393,7 @@ export async function updateRecurringRule(id: string, updates: Partial<Recurring
   try {
     const docRef = doc(db, "recurring_rules", id);
     await updateDoc(docRef, updates);
+    clearCache("recurring");
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `recurring_rules/${id}`);
   }
@@ -347,6 +403,7 @@ export async function deleteRecurringRule(id: string): Promise<void> {
   try {
     const docRef = doc(db, "recurring_rules", id);
     await deleteDoc(docRef);
+    clearCache("recurring");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `recurring_rules/${id}`);
   }
@@ -396,6 +453,10 @@ export async function processRecurringRules(userId: string): Promise<number> {
       processedCount++;
     }
     
+    if (processedCount > 0) {
+      clearCache("recurring");
+      clearCache("transactions");
+    }
     return processedCount;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "recurring_rules");
@@ -405,18 +466,20 @@ export async function processRecurringRules(userId: string): Promise<number> {
 
 // --- Loans & Amortization ---
 export async function getLoans(userId: string): Promise<Loan[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "loans"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Loan));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "loans");
-    return [];
-  }
+  return cachedFetch(`loans_${userId}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "loans"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Loan));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "loans");
+      return [];
+    }
+  });
 }
 
 export async function addLoan(loan: Omit<Loan, "id" | "created_at">): Promise<string> {
@@ -427,6 +490,7 @@ export async function addLoan(loan: Omit<Loan, "id" | "created_at">): Promise<st
       ...(hhId ? { household_id: hhId } : {}),
       created_at: Timestamp.now()
     });
+    clearCache("loans");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "loans");
@@ -435,20 +499,22 @@ export async function addLoan(loan: Omit<Loan, "id" | "created_at">): Promise<st
 }
 
 export async function getLoanSchedule(loanId: string, userId: string): Promise<LoanSchedule[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "loan_schedules"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-      where("loan_id", "==", loanId)
-    );
-    const snapshot = await getDocs(q);
-    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LoanSchedule));
-    return items.sort((a, b) => a.month_number - b.month_number);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "loan_schedules");
-    return [];
-  }
+  return cachedFetch(`loanschedule_${loanId}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "loan_schedules"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
+        where("loan_id", "==", loanId)
+      );
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LoanSchedule));
+      return items.sort((a, b) => a.month_number - b.month_number);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "loan_schedules");
+      return [];
+    }
+  });
 }
 
 export async function saveLoanSchedule(schedule: LoanSchedule[]): Promise<void> {
@@ -469,6 +535,7 @@ export async function saveLoanSchedule(schedule: LoanSchedule[]): Promise<void> 
       }
       await batch.commit();
     }
+    clearCache("loanschedule");
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, "loan_schedules");
   }
@@ -492,6 +559,7 @@ export async function clearLoanSchedule(loanId: string, userId: string): Promise
       }
       await batch.commit();
     }
+    clearCache("loanschedule");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, "loan_schedules");
   }
@@ -499,18 +567,20 @@ export async function clearLoanSchedule(loanId: string, userId: string): Promise
 
 // --- Savings Goals ---
 export async function getGoals(userId: string): Promise<Goal[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "goals"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "goals");
-    return [];
-  }
+  return cachedFetch(`goals_${userId}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "goals"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "goals");
+      return [];
+    }
+  });
 }
 
 export async function addGoal(goal: Omit<Goal, "id" | "created_at">): Promise<string> {
@@ -521,6 +591,7 @@ export async function addGoal(goal: Omit<Goal, "id" | "created_at">): Promise<st
       ...(hhId ? { household_id: hhId } : {}),
       created_at: Timestamp.now()
     });
+    clearCache("goals");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "goals");
@@ -532,6 +603,7 @@ export async function updateGoal(id: string, updates: Partial<Goal>): Promise<vo
   try {
     const docRef = doc(db, "goals", id);
     await updateDoc(docRef, updates);
+    clearCache("goals");
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `goals/${id}`);
   }
@@ -541,6 +613,7 @@ export async function deleteGoal(id: string): Promise<void> {
   try {
     const docRef = doc(db, "goals", id);
     await deleteDoc(docRef);
+    clearCache("goals");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `goals/${id}`);
   }
@@ -548,18 +621,20 @@ export async function deleteGoal(id: string): Promise<void> {
 
 // --- Tax Calculations ---
 export async function getTaxCalculations(userId: string): Promise<TaxCalculation[]> {
-  try {
-    const hhId = await getHhId(userId);
-    const q = query(
-      collection(db, "tax_calculations"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TaxCalculation));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "tax_calculations");
-    return [];
-  }
+  return cachedFetch(`tax_${userId}`, async () => {
+    try {
+      const hhId = await getHhId(userId);
+      const q = query(
+        collection(db, "tax_calculations"),
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TaxCalculation));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "tax_calculations");
+      return [];
+    }
+  });
 }
 
 export async function saveTaxCalculation(taxCalc: Omit<TaxCalculation, "id" | "created_at">): Promise<string> {
@@ -571,6 +646,7 @@ export async function saveTaxCalculation(taxCalc: Omit<TaxCalculation, "id" | "c
       created_at: Timestamp.now()
     };
     const docRef = await addDoc(collection(db, "tax_calculations"), payload);
+    clearCache("tax");
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, "tax_calculations");
@@ -582,6 +658,7 @@ export async function deleteTaxCalculation(id: string): Promise<void> {
   try {
     const docRef = doc(db, "tax_calculations", id);
     await deleteDoc(docRef);
+    clearCache("tax");
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `tax_calculations/${id}`);
   }

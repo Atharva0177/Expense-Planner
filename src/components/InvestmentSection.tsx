@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { 
+  getHouseholdMembership,
   getInvestmentAccounts, 
   addInvestmentAccount, 
   getInvestmentHoldings, 
@@ -12,7 +13,8 @@ import { InvestmentAccount, InvestmentHolding, InvestmentValuation } from "../ty
 import { TrendingUp, PlusCircle, RefreshCw, Briefcase, ChevronRight, Layers, DollarSign } from "lucide-react";
 
 export function InvestmentSection() {
-  const { user, household } = useAuth();
+  const { user, household, refreshHousehold } = useAuth();
+  const [activeHhId, setActiveHhId] = useState<string | null>(household?.id || null);
   const [accounts, setAccounts] = useState<InvestmentAccount[]>([]);
   const [holdings, setHoldings] = useState<Record<string, InvestmentHolding[]>>({});
   const [valuations, setValuations] = useState<Record<string, InvestmentValuation>>({});
@@ -36,22 +38,34 @@ export function InvestmentSection() {
   const [valPrice, setValPrice] = useState<number>(0);
   const [valDate, setValDate] = useState<string>("");
 
-  useEffect(() => {
-    if (household) {
-      loadData();
-    } else {
-      setLoading(false);
-    }
-  }, [household]);
-
-  const loadData = async () => {
-    if (!household) {
+  const loadData = async (targetHhId?: string) => {
+    const hhId = targetHhId || activeHhId || household?.id;
+    if (!hhId) {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      // Resolve household membership if context hasn't populated yet
+      try {
+        let member = await getHouseholdMembership(user.uid);
+        if (!member) {
+          await refreshHousehold();
+          member = await getHouseholdMembership(user.uid);
+        }
+        if (member?.household_id) {
+          setActiveHhId(member.household_id);
+          return loadData(member.household_id);
+        }
+      } catch (e) {
+        console.warn("Could not resolve household for investments:", e);
+      }
       setLoading(false);
       return;
     }
+
     setLoading(true);
     try {
-      const accs = await getInvestmentAccounts(household.id!);
+      const accs = await getInvestmentAccounts(hhId);
       setAccounts(accs || []);
       
       if (accs && accs.length > 0 && !selectedAccount) {
@@ -61,13 +75,21 @@ export function InvestmentSection() {
       const hData: Record<string, InvestmentHolding[]> = {};
       const vData: Record<string, InvestmentValuation> = {};
       
-      for (const acc of (accs || [])) {
-        hData[acc.id!] = await getInvestmentHoldings(acc.id!);
-        const latestVal = await getLatestValuation(acc.id!);
-        if (latestVal) {
-          vData[acc.id!] = latestVal;
-        }
-      }
+      // Parallel fetch holdings and valuations for all accounts
+      await Promise.all(
+        (accs || []).map(async (acc) => {
+          if (!acc.id) return;
+          const [hList, latestVal] = await Promise.all([
+            getInvestmentHoldings(acc.id),
+            getLatestValuation(acc.id)
+          ]);
+          hData[acc.id] = hList || [];
+          if (latestVal) {
+            vData[acc.id] = latestVal;
+          }
+        })
+      );
+
       setHoldings(hData);
       setValuations(vData);
     } catch (e) {
@@ -77,19 +99,27 @@ export function InvestmentSection() {
     }
   };
 
+  useEffect(() => {
+    if (household?.id) {
+      setActiveHhId(household.id);
+    }
+    loadData(household?.id);
+  }, [user, household?.id]);
+
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !household || !accName.trim()) return;
+    const effectiveHhId = activeHhId || household?.id;
+    if (!user || !effectiveHhId || !accName.trim()) return;
     await addInvestmentAccount({
       user_id: user.uid,
-      household_id: household.id!,
+      household_id: effectiveHhId,
       name: accName.trim(),
       type: accType,
       folio_number: accFolio.trim() || undefined
     });
     setAccName("");
     setAccFolio("");
-    loadData();
+    loadData(effectiveHhId);
   };
 
   const handleAddHolding = async (e: React.FormEvent) => {
@@ -138,7 +168,14 @@ export function InvestmentSection() {
     loadData();
   };
 
-  if (!household) return null;
+  if (loading && accounts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 space-y-4">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#1A1A1A]" />
+        <p className="font-mono text-xs uppercase tracking-widest text-[#555]">Loading Investment Portfolio...</p>
+      </div>
+    );
+  }
 
   // Calculate totals
   let totalInvested = 0;
