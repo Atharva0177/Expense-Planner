@@ -1,6 +1,11 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { 
+  initializeFirestore, 
+  getFirestore,
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from "firebase/firestore";
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
 // Default embedded config to guarantee external deployments (Vercel, Netlify) always work out of the box
@@ -29,4 +34,21 @@ const config = {
 
 export const app = getApps().length === 0 ? initializeApp(config) : getApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app, config.firestoreDatabaseId);
+
+// Initialize Firestore with IndexedDB multi-tab persistent cache and auto long polling detection
+function initDb() {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      }),
+      experimentalAutoDetectLongPolling: true,
+    }, config.firestoreDatabaseId);
+  } catch {
+    // If already initialized or in fallback environment
+    return getFirestore(app, config.firestoreDatabaseId);
+  }
+}
+
+export const db = initDb();
+
