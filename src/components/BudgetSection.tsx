@@ -16,22 +16,30 @@ export function BudgetSection({ currentMonth }: { currentMonth: string }) {
   const [limitAmount, setLimitAmount] = useState<number>(0);
 
   const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    const [catData, budData, txData] = await Promise.all([
-      getCategories(user.uid),
-      getBudgets(user.uid, currentMonth),
-      getTransactions(user.uid, currentMonth)
-    ]);
-    
-    setCategories(catData);
-    setBudgets(budData);
-    setTransactions(txData);
-    
-    if (catData.length > 0 && !selectedCategory) {
-      setSelectedCategory(catData[0].name);
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    setLoading(true);
+    try {
+      const [catData, budData, txData] = await Promise.all([
+        getCategories(user.uid),
+        getBudgets(user.uid, currentMonth),
+        getTransactions(user.uid, currentMonth)
+      ]);
+      
+      setCategories(catData || []);
+      setBudgets(budData || []);
+      setTransactions(txData || []);
+      
+      if (catData && catData.length > 0 && !selectedCategory) {
+        setSelectedCategory(catData[0].name);
+      }
+    } catch (e) {
+      console.warn("Notice loading budgets:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

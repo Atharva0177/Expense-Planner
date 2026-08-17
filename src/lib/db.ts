@@ -60,14 +60,22 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
 }
 
+const hhIdCache = new Map<string, { id?: string; time: number }>();
+
 async function getHhId(userId: string): Promise<string | undefined> {
+  const cached = hhIdCache.get(userId);
+  if (cached && Date.now() - cached.time < 30000) {
+    return cached.id;
+  }
+
   try {
     const member = await getHouseholdMembership(userId);
-    return member?.household_id;
+    const id = member?.household_id;
+    hhIdCache.set(userId, { id, time: Date.now() });
+    return id;
   } catch (e) {
     console.warn("Could not fetch household membership for user", userId, e);
     return undefined;

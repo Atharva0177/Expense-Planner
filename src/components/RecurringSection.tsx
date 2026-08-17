@@ -19,24 +19,31 @@ export function RecurringSection() {
   const [label, setLabel] = useState<string>("");
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const [ruleData, catData] = await Promise.all([
-      getRecurringRules(user.uid),
-      getCategories(user.uid)
-    ]);
-    
-    setRules(ruleData);
-    setCategories(catData);
-    if (catData.length > 0 && !categoryId) {
-      setCategoryId(catData[0].name);
+    try {
+      const [ruleData, catData] = await Promise.all([
+        getRecurringRules(user.uid),
+        getCategories(user.uid)
+      ]);
+      
+      setRules(ruleData || []);
+      setCategories(catData || []);
+      if (catData && catData.length > 0 && !categoryId) {
+        setCategoryId(catData[0].name);
+      }
+      
+      if (!nextDueDate) {
+        setNextDueDate(new Date().toISOString().split("T")[0]);
+      }
+    } catch (e) {
+      console.warn("Notice loading recurring rules:", e);
+    } finally {
+      setLoading(false);
     }
-    
-    if (!nextDueDate) {
-      setNextDueDate(new Date().toISOString().split("T")[0]);
-    }
-    
-    setLoading(false);
   };
 
   useEffect(() => {

@@ -39,32 +39,42 @@ export function InvestmentSection() {
   useEffect(() => {
     if (household) {
       loadData();
+    } else {
+      setLoading(false);
     }
   }, [household]);
 
   const loadData = async () => {
-    if (!household) return;
+    if (!household) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const accs = await getInvestmentAccounts(household.id!);
-    setAccounts(accs);
-    
-    if (accs.length > 0 && !selectedAccount) {
-      setSelectedAccount(accs[0].id!);
-    }
-    
-    const hData: Record<string, InvestmentHolding[]> = {};
-    const vData: Record<string, InvestmentValuation> = {};
-    
-    for (const acc of accs) {
-      hData[acc.id!] = await getInvestmentHoldings(acc.id!);
-      const latestVal = await getLatestValuation(acc.id!);
-      if (latestVal) {
-        vData[acc.id!] = latestVal;
+    try {
+      const accs = await getInvestmentAccounts(household.id!);
+      setAccounts(accs || []);
+      
+      if (accs && accs.length > 0 && !selectedAccount) {
+        setSelectedAccount(accs[0].id!);
       }
+      
+      const hData: Record<string, InvestmentHolding[]> = {};
+      const vData: Record<string, InvestmentValuation> = {};
+      
+      for (const acc of (accs || [])) {
+        hData[acc.id!] = await getInvestmentHoldings(acc.id!);
+        const latestVal = await getLatestValuation(acc.id!);
+        if (latestVal) {
+          vData[acc.id!] = latestVal;
+        }
+      }
+      setHoldings(hData);
+      setValuations(vData);
+    } catch (e) {
+      console.warn("Notice loading investments:", e);
+    } finally {
+      setLoading(false);
     }
-    setHoldings(hData);
-    setValuations(vData);
-    setLoading(false);
   };
 
   const handleAddAccount = async (e: React.FormEvent) => {

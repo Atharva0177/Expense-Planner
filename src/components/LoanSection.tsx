@@ -24,11 +24,19 @@ export function LoanSection() {
   const [prepayAmount, setPrepayAmount] = useState<number>(0);
 
   const fetchLoans = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const data = await getLoans(user.uid);
-    setLoans(data);
-    setLoading(false);
+    try {
+      const data = await getLoans(user.uid);
+      setLoans(data || []);
+    } catch (e) {
+      console.warn("Notice loading loans:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

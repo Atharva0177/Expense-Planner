@@ -44,43 +44,50 @@ export function ReportSection({ currentMonth }: { currentMonth: string }) {
   };
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
-    const months = getLast6Months(currentMonth);
-    
-    // Fetch Trend Data
-    const trendPromises = months.map(async (m) => {
-      const txs = await getTransactions(user.uid, m);
-      const incs = await getIncomes(user.uid, m);
+    try {
+      const months = getLast6Months(currentMonth);
       
-      const expense = txs.reduce((sum, t) => sum + t.amount, 0);
-      const income = incs.reduce((sum, i) => sum + i.net_credited, 0);
-      
-      return { month: m, income, expense, txs };
-    });
-
-    const trendResults = await Promise.all(trendPromises);
-    setTrendData(trendResults.map(r => ({ month: r.month, income: r.income, expense: r.expense })));
-
-    // Extract current month for pie chart
-    const currentMonthData = trendResults.find(r => r.month === currentMonth);
-    if (currentMonthData) {
-      setCurrentTransactions(currentMonthData.txs);
-      
-      const categoryMap = new Map<string, number>();
-      currentMonthData.txs.forEach(t => {
-        categoryMap.set(t.category_id, (categoryMap.get(t.category_id) || 0) + t.amount);
-      });
-      
-      const pie = Array.from(categoryMap.entries())
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
+      // Fetch Trend Data
+      const trendPromises = months.map(async (m) => {
+        const txs = await getTransactions(user.uid, m);
+        const incs = await getIncomes(user.uid, m);
         
-      setPieData(pie);
-    }
+        const expense = (txs || []).reduce((sum, t) => sum + t.amount, 0);
+        const income = (incs || []).reduce((sum, i) => sum + (i.net_credited || 0), 0);
+        
+        return { month: m, income, expense, txs: txs || [] };
+      });
 
-    setLoading(false);
+      const trendResults = await Promise.all(trendPromises);
+      setTrendData(trendResults.map(r => ({ month: r.month, income: r.income, expense: r.expense })));
+
+      // Extract current month for pie chart
+      const currentMonthData = trendResults.find(r => r.month === currentMonth);
+      if (currentMonthData) {
+        setCurrentTransactions(currentMonthData.txs);
+        
+        const categoryMap = new Map<string, number>();
+        currentMonthData.txs.forEach(t => {
+          categoryMap.set(t.category_id, (categoryMap.get(t.category_id) || 0) + t.amount);
+        });
+        
+        const pie = Array.from(categoryMap.entries())
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value);
+          
+        setPieData(pie);
+      }
+    } catch (e) {
+      console.warn("Notice loading reports:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

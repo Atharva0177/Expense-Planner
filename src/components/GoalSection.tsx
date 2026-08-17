@@ -22,15 +22,23 @@ export function GoalSection() {
   const [contributeAmount, setContributeAmount] = useState<number>(0);
 
   const fetchData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const [goalsData, rulesData] = await Promise.all([
-      getGoals(user.uid),
-      getRecurringRules(user.uid)
-    ]);
-    setGoals(goalsData);
-    setRecurringRules(rulesData);
-    setLoading(false);
+    try {
+      const [goalsData, rulesData] = await Promise.all([
+        getGoals(user.uid),
+        getRecurringRules(user.uid)
+      ]);
+      setGoals(goalsData || []);
+      setRecurringRules(rulesData || []);
+    } catch (e) {
+      console.warn("Notice loading goals:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

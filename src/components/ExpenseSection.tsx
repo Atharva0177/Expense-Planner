@@ -20,18 +20,26 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
   const [paymentMode, setPaymentMode] = useState<Transaction["payment_mode"]>("UPI");
 
   const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    const [txData, catData] = await Promise.all([
-      getTransactions(user.uid, currentMonth),
-      getCategories(user.uid)
-    ]);
-    setTransactions(txData);
-    setCategories(catData);
-    if (catData.length > 0 && !categoryId) {
-      setCategoryId(catData[0].name);
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    setLoading(true);
+    try {
+      const [txData, catData] = await Promise.all([
+        getTransactions(user.uid, currentMonth),
+        getCategories(user.uid)
+      ]);
+      setTransactions(txData || []);
+      setCategories(catData || []);
+      if (catData && catData.length > 0 && !categoryId) {
+        setCategoryId(catData[0].name);
+      }
+    } catch (e) {
+      console.warn("Notice loading expenses:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

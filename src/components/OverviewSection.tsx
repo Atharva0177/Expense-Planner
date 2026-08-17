@@ -17,9 +17,15 @@ export function OverviewSection({ currentMonth }: { currentMonth: string }) {
   const [showMemberBreakdown, setShowMemberBreakdown] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchData() {
-      if (!user) return;
-      setLoading(true);
+      if (!user) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+      if (isMounted) setLoading(true);
+      
       try {
         const [txData, incData, budData, goalData, loanData] = await Promise.all([
           getTransactions(user.uid, currentMonth),
@@ -28,24 +34,31 @@ export function OverviewSection({ currentMonth }: { currentMonth: string }) {
           getGoals(user.uid),
           getLoans(user.uid)
         ]);
-        setTransactions(txData);
-        setIncomeEntries(incData);
-        setBudgets(budData);
-        setGoals(goalData);
-        setLoans(loanData);
+        
+        if (!isMounted) return;
+        setTransactions(txData || []);
+        setIncomeEntries(incData || []);
+        setBudgets(budData || []);
+        setGoals(goalData || []);
+        setLoans(loanData || []);
         
         const m = await getHouseholdMembership(user.uid);
-        if (m) {
+        if (m && isMounted) {
           const hhMembers = await getHouseholdMembers(m.household_id);
-          setMembers(hhMembers);
+          if (isMounted) setMembers(hhMembers || []);
         }
       } catch (err) {
-        console.error("Error fetching overview data:", err);
+        console.warn("Notice fetching overview data:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
+    
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user, currentMonth]);
 
   if (loading) {

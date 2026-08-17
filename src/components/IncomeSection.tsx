@@ -21,11 +21,19 @@ export function IncomeSection({ currentMonth }: { currentMonth: string }) {
   const [tds, setTds] = useState<number>(0);
 
   const fetchIncomes = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const data = await getIncomes(user.uid, currentMonth);
-    setIncomes(data);
-    setLoading(false);
+    try {
+      const data = await getIncomes(user.uid, currentMonth);
+      setIncomes(data || []);
+    } catch (e) {
+      console.warn("Notice loading incomes:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
