@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getTransactions, addTransaction, deleteTransaction, getCategories, addCategory } from "../lib/db";
 import { Transaction, Category } from "../types";
-import { PlusCircle, Trash2, Tag, Calendar as CalendarIcon, Camera, Loader2, Edit3, CreditCard, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { PlusCircle, Trash2, Tag, Calendar as CalendarIcon, Camera, Loader2, Edit3, CreditCard, CheckCircle2, AlertTriangle, Key, X } from "lucide-react";
 import { processImageForOCR, isHeicFile } from "../lib/imageUtils";
+import { scanReceiptWithFallback } from "../lib/receiptScanner";
 
 export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
   const { user } = useAuth();
@@ -14,6 +15,10 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
   const [scanning, setScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(() => {
+    return (typeof window !== "undefined" ? localStorage.getItem("expense_planner_gemini_key") : "") || "";
+  });
 
   // Form State
   const [amount, setAmount] = useState<number>(0);
@@ -65,19 +70,7 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
       // Process image (converts .heic/.heif to JPEG, resizes if huge)
       const { imageBase64, mimeType } = await processImageForOCR(file);
 
-      const response = await fetch("/api/scan-receipt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, mimeType })
-      });
-
-      const responseData = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(responseData.error || `Server responded with status ${response.status}`);
-      }
-
-      const data = responseData;
+      const data = await scanReceiptWithFallback(imageBase64, mimeType);
       let detectedDetails: string[] = [];
       
       if (data.amount && Number(data.amount) > 0) {
@@ -177,13 +170,13 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
       {/* Entry Form */}
       <div className="bg-white dark:bg-[#1A1A1A] border border-[#1A1A1A] dark:border-[#383838] p-4 sm:p-6 md:p-8 relative shadow-[3px_3px_0px_#1A1A1A] sm:shadow-[6px_6px_0px_#1A1A1A] dark:shadow-[6px_6px_0px_#000]">
         <div className="flex justify-between items-center mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <span className="bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest inline-block w-max">
               Log Expense
             </span>
             <label className={`cursor-pointer text-[10px] uppercase font-bold tracking-widest flex items-center gap-1.5 transition-all w-max ${scanning ? 'text-[#666] dark:text-[#999]' : 'text-blue-700 dark:text-sky-400 hover:text-blue-900 dark:hover:text-sky-300'}`}>
               {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-              <span>{scanning ? "Processing..." : "Scan Receipt / Bill (JPG, PNG, HEIC)"}</span>
+              <span>{scanning ? "Processing..." : "Scan Receipt (JPG, PNG, HEIC)"}</span>
               <input 
                 type="file" 
                 accept="image/*,.heic,.heif,image/heic,image/heif" 
@@ -193,6 +186,15 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
                 disabled={scanning}
               />
             </label>
+            <button
+              type="button"
+              onClick={() => setShowApiKeyModal(true)}
+              title="Configure Gemini API Key"
+              className="text-[10px] uppercase font-mono tracking-wider text-[#666] dark:text-[#AAA] hover:text-[#1A1A1A] dark:hover:text-white flex items-center gap-1"
+            >
+              <Key className="w-3 h-3" />
+              <span className="hidden md:inline">API Key</span>
+            </button>
           </div>
           <button 
             type="button"
@@ -216,12 +218,91 @@ export function ExpenseSection({ currentMonth }: { currentMonth: string }) {
 
         {/* Scan Error Banner */}
         {scanError && (
-          <div className="mb-3 p-2.5 bg-[#FDF2F2] dark:bg-rose-950/40 border border-[#8B2626] dark:border-rose-600 text-[#8B2626] dark:text-rose-300 text-xs font-mono flex items-center justify-between gap-2 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+          <div className="mb-3 p-3 bg-[#FDF2F2] dark:bg-rose-950/40 border border-[#8B2626] dark:border-rose-600 text-[#8B2626] dark:text-rose-300 text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start sm:items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 sm:mt-0" />
               <span>{scanError}</span>
             </div>
-            <button onClick={() => setScanError(null)} className="text-[10px] uppercase hover:underline">✕</button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button 
+                onClick={() => setShowApiKeyModal(true)} 
+                className="px-2 py-1 bg-[#8B2626] text-white hover:bg-[#6b1e1e] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1"
+              >
+                <Key className="w-3 h-3" />
+                <span>Enter Gemini Key</span>
+              </button>
+              <button onClick={() => setScanError(null)} className="text-[10px] uppercase hover:underline">✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* API Key Configuration Modal for Cloudflare / Static Hosting */}
+        {showApiKeyModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-[#FCFAF7] dark:bg-[#1C1C1C] border border-[#1A1A1A] dark:border-[#333] max-w-md w-full p-5 space-y-4 shadow-xl">
+              <div className="flex justify-between items-center border-b border-[#EBE7DF] dark:border-[#2E2E2E] pb-3">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-blue-600 dark:text-sky-400" />
+                  <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#1A1A1A] dark:text-white">
+                    Configure Gemini API Key
+                  </h3>
+                </div>
+                <button onClick={() => setShowApiKeyModal(false)} className="text-xs font-mono text-[#888] hover:text-black dark:hover:text-white">✕</button>
+              </div>
+
+              <p className="text-xs font-mono text-[#555] dark:text-[#AAA] leading-relaxed">
+                For Cloudflare Pages and static hosting, receipt scanning can run directly in your browser with your Gemini API key.
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0]">
+                  Google Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="AIzaSy..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#242424] text-xs font-mono text-[#1A1A1A] dark:text-[#F0ECE1] focus:outline-none"
+                />
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-blue-600 dark:text-sky-400 hover:underline inline-block font-mono mt-1"
+                >
+                  → Get free API key from Google AI Studio
+                </a>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#EBE7DF] dark:border-[#2E2E2E]">
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyModal(false)}
+                  className="px-3 py-1.5 border border-[#1A1A1A] dark:border-[#444] text-[10px] font-mono uppercase font-bold text-[#666] dark:text-[#AAA]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (apiKeyInput.trim()) {
+                      localStorage.setItem("expense_planner_gemini_key", apiKeyInput.trim());
+                      setScanError(null);
+                      setScanStatus("API Key saved! You can now scan receipts.");
+                      setShowApiKeyModal(false);
+                      setTimeout(() => setScanStatus(null), 5000);
+                    } else {
+                      localStorage.removeItem("expense_planner_gemini_key");
+                      setShowApiKeyModal(false);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] text-[10px] font-mono uppercase font-bold tracking-wider hover:opacity-90"
+                >
+                  Save Key
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
