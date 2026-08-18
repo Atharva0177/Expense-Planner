@@ -172,7 +172,7 @@ export async function getHouseholdMembers(householdId: string): Promise<Househol
   });
 }
 
-export async function createInvite(householdId: string, email: string, role: string): Promise<string> {
+export async function createInvite(householdId: string, email: string, role: string, custom_role_description?: string): Promise<string> {
   try {
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     const expiresAt = new Date();
@@ -183,6 +183,7 @@ export async function createInvite(householdId: string, email: string, role: str
       email,
       invite_code: inviteCode,
       role,
+      custom_role_description: custom_role_description || null,
       status: "pending",
       expires_at: Timestamp.fromDate(expiresAt),
       created_at: Timestamp.now()
@@ -219,6 +220,7 @@ export async function checkAndAcceptInvite(userId: string, email: string, invite
         household_id: inviteData.household_id,
         email: email || inviteData.email,
         role: inviteData.role || "dependent",
+        custom_role_description: inviteData.custom_role_description || null,
         joined_at: Timestamp.now()
       });
     } else {
@@ -227,6 +229,7 @@ export async function checkAndAcceptInvite(userId: string, email: string, invite
         user_id: userId,
         email: email || inviteData.email,
         role: inviteData.role || "dependent",
+        custom_role_description: inviteData.custom_role_description || null,
         joined_at: Timestamp.now()
       });
     }

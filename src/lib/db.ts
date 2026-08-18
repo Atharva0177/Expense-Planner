@@ -243,6 +243,58 @@ export async function getTransactions(userId: string, monthPrefix: string): Prom
   });
 }
 
+export async function getAllTransactions(userId: string): Promise<Transaction[]> {
+  try {
+    const hhId = await getHhId(userId);
+    const q = query(
+      collection(db, "transactions"),
+      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+    );
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+    return data.sort((a, b) => b.date.localeCompare(a.date));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, "transactions");
+    return [];
+  }
+}
+
+export async function getAllIncomes(userId: string): Promise<IncomeEntry[]> {
+  try {
+    const hhId = await getHhId(userId);
+    const q = query(
+      collection(db, "income_entries"),
+      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+    );
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeEntry));
+    return data.sort((a, b) => b.month.localeCompare(a.month));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, "income_entries");
+    return [];
+  }
+}
+
+export async function getTransactionsForMonths(userId: string, months: string[]): Promise<Transaction[]> {
+  if (months.length === 0) return [];
+  const results = await Promise.all(months.map(m => getTransactions(userId, m)));
+  const flattened = results.flat();
+  return flattened.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export async function getIncomesForMonths(userId: string, months: string[]): Promise<IncomeEntry[]> {
+  if (months.length === 0) return [];
+  const results = await Promise.all(months.map(m => getIncomes(userId, m)));
+  const flattened = results.flat();
+  return flattened.sort((a, b) => b.month.localeCompare(a.month));
+}
+
+export async function getBudgetsForMonths(userId: string, months: string[]): Promise<Budget[]> {
+  if (months.length === 0) return [];
+  const results = await Promise.all(months.map(m => getBudgets(userId, m)));
+  return results.flat();
+}
+
 export async function addTransaction(transaction: Omit<Transaction, "id" | "created_at">): Promise<string> {
   try {
     const hhId = await getHhId(transaction.user_id);

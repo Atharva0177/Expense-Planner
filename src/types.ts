@@ -55,7 +55,7 @@ export interface Transaction {
   amount: number;
   date: string; // YYYY-MM-DD
   note: string;
-  payment_mode: "UPI" | "Card" | "Cash" | "Netbanking";
+  payment_mode: "UPI" | "Card" | "Cash" | "Netbanking" | "Other" | string;
   source: "manual" | "recurring" | "csv_import";
   created_at?: Date;
 }
@@ -150,7 +150,8 @@ export interface HouseholdMember {
   household_id: string;
   user_id: string;
   email: string;
-  role: "primary" | "spouse" | "dependent";
+  role: "primary" | "spouse" | "dependent" | "other" | string;
+  custom_role_description?: string;
   joined_at?: Date;
 }
 
@@ -159,7 +160,8 @@ export interface Invite {
   household_id: string;
   email: string;
   invite_code: string;
-  role?: "spouse" | "dependent";
+  role?: "spouse" | "dependent" | "primary" | "other" | string;
+  custom_role_description?: string;
   status: "pending" | "accepted" | "expired";
   expires_at: Date;
   created_at?: Date;
@@ -171,7 +173,8 @@ export interface InvestmentAccount {
   id?: string;
   user_id: string;
   household_id?: string;
-  type: "mutual_fund" | "stock" | "fd" | "ppf" | "nps" | "gold";
+  type: "mutual_fund" | "stock" | "fd" | "ppf" | "nps" | "gold" | "other" | string;
+  custom_type_description?: string;
   name: string;
   folio_number?: string;
   created_at?: Date;
