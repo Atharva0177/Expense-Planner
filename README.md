@@ -1100,8 +1100,10 @@ The build output includes:
 - `dist/assets/`: hashed CSS and JS files
 - `dist/server.cjs`: Bundled Express server
 - `firebase-applet-config.json`: Firebase configuration copy
-- 
-<a id="ci-cd"></a> 
+-
+
+<a id="ci-cd"></a>
+
 ## CI/CD
 
 The application uses GitHub Actions for continuous integration and deployment.
@@ -1294,6 +1296,36 @@ See [Docker](#docker) section for containerized deployment options
 - **File Uploads**: Receipt scanning accepts image files; ensure backend validates file types and sizes (currently 25MB limit via express.json)
 - **Information Disclosure**: Error messages may reveal implementation details; consider generic messages in production
 - **Supply Chain**: Monitor dependencies for vulnerabilities via CI/CD pipeline
+
+### Current Security Status (as of 2026-08-19)
+
+Dependency vulnerability scanning shows 17 total vulnerabilities (9 moderate, 8 high) with **no critical vulnerabilities**.
+
+**Resolved Critical Issue**:
+
+- Fixed critical tar vulnerability in @mapbox/node-pre-gyp by upgrading @vercel/node to 5.10.1, which resolved the blocker preventing CI/CD pipeline success
+
+**Remaining High Severity Vulnerabilities**:
+
+1. **js-yaml** (in @vercel/python-analysis@0.13.2/node_modules/js-yaml@4.1.1)
+   - Fix available via `npm audit fix` but not applied due to dependency lock constraints
+   - Requires updating @vercel/python-analysis to get fixed js-yaml, but 0.13.2 is latest available
+
+2. **minimatch, path-to-regexp, undici** (in various @vercel/node dependencies)
+   - Fixes available via `npm audit fix --force` but would require downgrading @vercel/node to 4.0.0
+   - This downgrade would reintroduce the critical tar vulnerability we just fixed
+   - Represents a deliberate risk acceptance tradeoff
+
+3. **xlsx** (top level)
+   - No fix available (known limitation of SheetJS library)
+
+**Risk Assessment & Mitigation**:
+
+- Application builds (`npm run build`), starts (`npm run start`), and passes TypeScript checks (`npm run lint`) with current dependencies
+- Critical blocker (tar vulnerability) has been resolved
+- Maintained functionality throughout dependency updates
+- Known high severity issues remain in dependencies where fixes would reintroduce more critical issues
+- Regular monitoring continues; will revisit when dependency updates provide non-disruptivefix paths
 
 ## Performance
 
@@ -1709,7 +1741,7 @@ docker run --rm -it expense-planner sh
   - Scales well to additional financial domains
   - Makes the codebase approachable for new contributors
 
-### Decision: GitHub Actions  Pipeline
+### Decision: GitHub Actions Pipeline
 
 - **Evidence**:
   - `.github/workflows/ci-cd.yml` defines lint, test, build, security audit, deploy
@@ -1819,7 +1851,7 @@ The application can be deployed via:
 - **Vercel**: Using GitHub Actions (`vercel deploy --prebuilt`) or Vercel CLI
 - **Docker**: Using `docker compose up --build` or manual `docker run`
 - **Traditional Node.js**: Using `npm run build` then `node dist/server.cjs`
-  The  pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
+  The pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
 
 ### Is the application suitable for business use?
 
