@@ -123,16 +123,47 @@ export interface Goal {
 export interface TaxCalculation {
   id?: string;
   user_id: string;
-  financial_year: string;
-  gross_income: number;
+  household_id?: string;
+  financial_year: "2024-25" | "2025-26" | "2026-27" | string;
+  assessment_year?: string;
+  // Income components
+  gross_salary: number;
+  business_income?: number;
+  rental_income?: number;
+  interest_income?: number;
+  other_income?: number;
+  // Capital Gains
+  stcg_equity?: number;
+  ltcg_equity?: number;
+  stcg_other?: number;
+  ltcg_other?: number;
+  // Deductions
   hra_exemption: number;
+  standard_deduction: number;
   eighty_c: number;
   eighty_d: number;
-  home_loan_interest: number;
+  eighty_ccd_1b: number; // Self NPS
+  eighty_ccd_2: number; // Employer NPS
+  eighty_e?: number; // Education loan interest
+  eighty_g?: number; // Donations
+  eighty_tta_ttb?: number; // Savings interest
+  home_loan_interest: number; // Sec 24b
   other_deductions: number;
+  // Computed values
   old_regime_tax: number;
   new_regime_tax: number;
+  old_regime_cess: number;
+  new_regime_cess: number;
+  old_regime_surcharge?: number;
+  new_regime_surcharge?: number;
+  old_regime_rebate?: number;
+  new_regime_rebate?: number;
   recommended_regime: "old" | "new";
+  breakeven_deduction?: number;
+  // TDS & Advance Tax
+  tds_deducted?: number;
+  advance_tax_paid?: number;
+  net_tax_payable_or_refund?: number;
   created_at?: Date;
 }
 

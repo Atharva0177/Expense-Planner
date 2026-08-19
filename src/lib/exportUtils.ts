@@ -638,7 +638,7 @@ export function exportTaxPackPDF(data: TaxReportData) {
 
   // Incomes & Deductions Summary
   const taxRows = [
-    ["1. Gross Salary / Professional Income", formatINR(totalGrossSalary || tc?.gross_income || 0)],
+    ["1. Gross Salary / Professional Income", formatINR(totalGrossSalary || (tc as any)?.gross_salary || (tc as any)?.gross_income || 0)],
     ["2. Less: Standard Deduction (Section 16 ia)", `-${formatINR(standardDeduction)}`],
     ["3. Less: Professional Tax (Section 16 iii)", `-${formatINR(totalPT)}`],
     ["4. Less: House Rent Allowance Exemption (Sec 10 13A)", `-${formatINR(hraExemption)}`],
