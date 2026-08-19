@@ -1760,8 +1760,6 @@ docker run --rm -it expense-planner sh
   - Provides visibility into deployment process
   - Supports both serverful and serverless deployment targets
 
-
-
 ## FAQ
 
 ### How do I start the development server?
@@ -1828,11 +1826,9 @@ The application can be deployed via:
 
 The application is designed for personal and family finance management. While it could be adapted for small business use, it lacks features like invoicing, payroll, inventory management, and complex accounting required for business operations.
 
-
 ## Contributing
 
 We welcome contributions to improve Expense Planner! Please follow these guidelines:
-
 
 ### Development Guidelines
 
@@ -1878,4 +1874,3 @@ Please use the GitHub Issues tracker to report bugs or suggest features. Include
 - Expected vs actual behavior
 - Screenshots or console logs (if helpful)
 - Environment details (browser, Node version, etc.)
-
