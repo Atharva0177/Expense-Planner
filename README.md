@@ -1760,36 +1760,7 @@ docker run --rm -it expense-planner sh
   - Provides visibility into deployment process
   - Supports both serverful and serverless deployment targets
 
-## Known Limitations
 
-### Verified Limitations
-
-- **No Custom Theming**: Theme is fixed to indigo/emerald color scheme with light/dark variants
-- **Limited Export Formats**: Export functionality focused on basic CSV/JSON (ExportModal exists but implementation not verified in audit)
-- **AI Dependency**: Receipt scanning requires Gemini API key for full functionality
-- **No Recurring Transaction Editing**: Recurring rules can be created and deleted but not modified after creation (based on code review)
-- **Limited Investment Tracking**: Buy/sell transactions and portfolio rebalancing not implemented
-- **Basic Tax Calculation**: Uses simplified India-centric tax model without complex deductions
-- **No Data Import**: Lack of CSV/JSON import for historical data migration
-- **Offline Indicator**: No visual indicator when Firestore is offline (despite offline persistence)
-- **Vercel Function Size**: Large dependencies may approach Vercel limits (monitor bundle size)
-
-### Potential Improvements
-
-- **Advanced Analytics**: Add net worth tracking, cash flow statements, ratio analysis
-- **Collaboration Features**: Real-time editing, comments, approval workflows
-- **Multi-Currency Support**: Transactions in different currencies with exchange rates
-- **Budget Rollover**: Automatic transfer of unspent budget to next period
-- **Goal Progress Tracking**: Visual progress bars and milestone celebrations
-- **Receipt OCR Improvements**: Custom template matching for specific receipt formats
-- **Data Archiving**: Ability to archive old years while keeping them accessible
-- **Mobile Application**: React Native or PWA enhancements for offline-first mobile experience
-- **Role-Based Permissions**: Granular permissions beyond primary/spouse/dependent
-- **Audit Trail**: Detailed change history for financial transactions
-- **Scheduled Reports**: Email delivery of financial summaries
-- **Optimize Vercel Bundle**: Code splitting for serverless functions, lazy load heavy libs
-- **Feature Flags**: Enable/disable features via environment variables
-- **Internationalization**: Add i18n support for multiple languages
 
 ## FAQ
 
@@ -1857,53 +1828,11 @@ The application can be deployed via:
 
 The application is designed for personal and family finance management. While it could be adapted for small business use, it lacks features like invoicing, payroll, inventory management, and complex accounting required for business operations.
 
-### How do I contribute to the project?
-
-See the [Contributing](#contributing) section below.
-
-## Glossary
-
-- **ATM**: Automated Teller Machine (payment mode option)
-- **EMO**: Equated Monthly Installment (loan payment)
-- **FD**: Fixed Deposit (investment type)
-- **HRA**: House Rent Allowance (income component)
-- **IPO**: Initial Public Offering (investment type)
-- **ISIN**: International Securities Identification Number (investment identifier)
-- **ITC**: Input Tax Credit (tax concept)
-- **KYC**: Know Your Customer (verification process)
-- **LIC**: Life Insurance Corporation (insurance type)
-- **MF**: Mutual Fund (investment type)
-- **NAV**: Net Asset Value (mutual fund valuation)
-- **NPS**: National Pension System (investment/retirement type)
-- **PPF**: Public Provident Fund (investment type)
-- **RD**: Recurring Deposit (investment type)
-- **SIP**: Systematic Investment Plan (investment method)
-- **TDS**: Tax Deducted at Source (income deduction)
-- **UPI**: Unified Payments Interface (payment mode)
-- **ULIP**: Unit Linked Insurance Plan (investment/insurance type)
-- **GST**: Goods and Services Tax (tax concept)
-- **FY**: Financial Year
-- **YOY**: Year Over Year
-- **QoQ**: Quarter Over Quarter
-- **MoM**: Month Over Month
-- **YOY**: Year Over Year
-- **YTD**: Year To Date
-- **MTD**: Month To Date
-- **QTD**: Quarter To Date
 
 ## Contributing
 
 We welcome contributions to improve Expense Planner! Please follow these guidelines:
 
-### How to Contribute
-
-1. **Fork the Repository**
-2. **Create a Feature Branch**: `git checkout -b feature/amazing-feature`
-3. **Make Your Changes**
-4. **Add Tests** (if applicable)
-5. **Commit Changes**: `git commit -m 'Add amazing feature'`
-6. **Push to Branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
 
 ### Development Guidelines
 
@@ -1950,10 +1879,3 @@ Please use the GitHub Issues tracker to report bugs or suggest features. Include
 - Screenshots or console logs (if helpful)
 - Environment details (browser, Node version, etc.)
 
-### Code of Conduct
-
-Please note that this project is released with a Contributor Covenant Code of Conduct. By participating in this project, you agree to abide by its terms.
-
-## License
-
-No license file was found in the repository. Please check with the project maintainers for licensing information.
