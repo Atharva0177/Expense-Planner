@@ -121,6 +121,7 @@ flowchart TD
     B -->|Firestore SDK| C[(Firebase Firestore)]
     B -->|Generative AI API| D[Google Gemini]
     A -->|Static Assets| B
+
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#bfb,stroke:#333,stroke-width:2px
@@ -186,16 +187,20 @@ flowchart LR
     D --> E[AuthProvider]
     E --> F[BrowserRouter]
     F --> G[Routes]
-    G --> H[/login Login Page]
-    G --> I[/ Dashboard]
+
+    G --> H["/login — Login Page"]
+    G --> I["/ — Dashboard"]
+
     I --> J[ProtectedRoute Wrapper]
     J --> K[Dashboard Layout]
     K --> L[Section Components]
+
     L --> M[OverviewSection]
     L --> N[ExpenseSection]
     L --> O[IncomeSection]
     L --> P[BudgetSection]
-    L --> Q[...Other Sections]
+    L --> Q["...Other Sections"]
+
     style A fill:#f9f,stroke:#333,stroke-width:1px
     style B fill:#eee,stroke:#333,stroke-width:1px
     style C fill:#dfd,stroke:#333,stroke-width:1px
@@ -243,23 +248,20 @@ sequenceDiagram
     participant F as Firestore
     participant G as Gemini AI
 
-    C->>S: HTTPS Request (e.g., POST /api/scan-receipt)
+    C->>S: HTTPS Request (e.g. POST /api/scan-receipt)
     S->>S: Validate middleware (rate limiting, JSON parsing)
+
     alt Has Gemini API Key in request
         S->>G: Call Generative AI API
         G-->>S: Return structured receipt data
-    else
-        S->>F: Fetch/user data if needed
-        S-->>S: Process locally (if applicable)
+    else No Gemini API Key
+        S->>F: Fetch user data if needed
+        S->>S: Process locally if applicable
     end
+
     S->>F: Store/retrieve transaction data
     F-->>S: Return Firestore response
     S-->>C: JSON Response with data/error
-
-    style C fill:#f9f,stroke:#333,stroke-width:1px
-    style S fill:#bbf,stroke:#333,stroke-width:1px
-    style F fill:#bfb,stroke:#333,stroke-width:1px
-    style G fill:#fbb,stroke:#333,stroke-width:1px
 ```
 
 ### Request Flow (Vercel Serverless Function)
@@ -269,23 +271,24 @@ sequenceDiagram
     participant C as Client
     participant V as Vercel Function
     participant G as Gemini AI
+    participant F as Firestore
 
     C->>V: HTTPS Request (POST /api/scan-receipt)
-    V->>V: Validate middleware (JSON parsing, body size limit)
-    alt Has Gemini API Key in environment
-        V->>G: Call Generative AI API
-        G-->>V: Return structured receipt data
-    else
-        V-->>V: Return error (missing API key)
-    end
-    V->>F: Store/retrieve transaction data (if needed via Firebase Admin SDK)
-    F-->>V: Return Firestore response
-    V-->>C: JSON Response with data/error
+    V->>V: Parse JSON
+    V->>V: Validate body and size limit
 
-    style C fill:#f9f,stroke:#333,stroke-width:1px
-    style V fill:#bbf,stroke:#333,stroke-width:1px
-    style G fill:#fbb,stroke:#333,stroke-width:1px
-    style F fill:#bfb,stroke:#333,stroke-width:1px
+    alt Gemini API Key configured
+        V->>G: Call Generative AI API
+        G-->>V: Structured receipt data
+        V->>V: Validate Gemini response
+
+        V->>F: Store transaction via Firebase Admin SDK
+        F-->>V: Firestore response
+
+        V-->>C: 200 JSON Response
+    else Gemini API Key missing
+        V-->>C: 500 Error - Missing API Key
+    end
 ```
 
 ### Middleware (Express)
@@ -562,23 +565,25 @@ sequenceDiagram
 
     U->>B: Visit /login
     B->>F: Sign in with email/password
-    F-->>B: Auth token (ID token)
-    B->>S/V: Include token in subsequent requests (via Firebase SDK)
-    S->>F: Verify token via Firebase Admin SDK
-    V->>F: Verify token via Firebase Admin SDK (if needed)
-    F-->>S/V: Token validity and user info
-    S->>DB: Fetch household membership
-    V->>DB: Fetch household membership (if needed)
-    DB-->>S/V: Household data
-    S-->>B: Authenticated response
-    V-->>B: Authenticated response
+    F-->>B: Return Firebase ID token
 
-    style U fill:#f9f,stroke:#333,stroke-width:1px
-    style B fill:#bbf,stroke:#333,stroke-width:1px
-    style F fill:#bfb,stroke:#333,stroke-width:1px
-    style S fill:#fbb,stroke:#333,stroke-width:1px
-    style V fill:#9f9,stroke:#333,stroke-width:1px
-    style DB fill:#ff9,stroke:#333,stroke-width:1px
+    B->>B: Store authentication state
+
+    alt Request handled by Express Server
+        B->>S: API request with ID token
+        S->>F: Verify token via Firebase Admin SDK
+        F-->>S: Token validity and user information
+        S->>DB: Fetch household membership
+        DB-->>S: Household data
+        S-->>B: Authenticated response
+    else Request handled by Vercel Function
+        B->>V: API request with ID token
+        V->>F: Verify token via Firebase Admin SDK
+        F-->>V: Token validity and user information
+        V->>DB: Fetch household membership
+        DB-->>V: Household data
+        V-->>B: Authenticated response
+    end
 ```
 
 ### Authorization Model
@@ -661,38 +666,40 @@ flowchart TD
 sequenceDiagram
     participant U as User
     participant C as Client (React)
-    participant S as Server (Express)
+    participant S as Express Server
     participant V as Vercel Function
     participant F as Firestore
+    participant G as Gemini AI
 
-    U->>C: Fill expense form (manual or via scan)
-    C->>S: POST /api/scan-receipt (if scanning) OR direct form submission
-    C->>V: POST /api/scan-receipt (if scanning via Vercel) OR direct form submission
-    alt Scanning Path
-        S->>F: (Optional) Fetch user/household data
-        S->>Gemini: AI processing
-        Gemini-->>S: Extracted data
+    U->>C: Fill expense form (manual or scan)
+
+    alt Manual Entry
+        C->>C: Validate expense form
+    else Receipt Scanning
+        C->>S: POST /api/scan-receipt
+        S->>G: Send receipt for AI processing
+        G-->>S: Return extracted receipt data
         S-->>C: Return scanned data
-        V->>F: (Optional) Fetch user/household data
-        V->>Gemini: AI processing
-        Gemini-->>V: Extracted data
-        V-->>C: Return scanned data
-    end
-    C->>C: Populate form with scanned data
-    C->>S: POST transaction data (via addTransaction in lib/db.ts)
-    C->>V: POST transaction data (via addTransaction in lib/db.ts) (if using Vercel)
-    S->>F: Validate and insert transaction document
-    V->>F: Validate and insert transaction document
-    F-->>S/V: Confirmation with document ID
-    S/V-->>C: Success response
-    C->>C: Clear form, refetch transactions list
-    C->>U: Show updated expense list
 
-    style U fill:#f9f,stroke:#333,stroke-width:1px
-    style C fill:#bbf,stroke:#333,stroke-width:1px
-    style S fill:#bfb,stroke:#333,stroke-width:1px
-    style V fill:#9f9,stroke:#333,stroke-width:1px
-    style F fill:#fbb,stroke:#333,stroke-width:1px
+        C->>C: Populate form with scanned data
+        C->>C: Review and validate extracted data
+    end
+
+    alt Express API
+        C->>S: POST transaction data
+        S->>F: Validate and insert transaction
+        F-->>S: Return document ID
+        S-->>C: Success response
+    else Vercel API
+        C->>V: POST transaction data
+        V->>F: Validate and insert transaction
+        F-->>V: Return document ID
+        V-->>C: Success response
+    end
+
+    C->>C: Clear form
+    C->>C: Refetch transactions
+    C-->>U: Display updated expense list
 ```
 
 ### Household Invitation Workflow
@@ -705,21 +712,20 @@ sequenceDiagram
     actor I as Invitee
 
     P->>S: Request invite for email
-    S->>F: Create invite document with code & expiry
+    S->>F: Create invite document with code and expiry
     F-->>S: Invite created
     S-->>P: Return invite code
+
     P->>I: Share invite code
-    I->>S: Submit email + invite code
+    I->>S: Submit email and invite code
+
     S->>F: Validate invite (pending, not expired)
     F-->>S: Valid invite
-    S->>F: Create/update household membership
-    S->>F: Mark invite as accepted
-    S-->>I: Success - redirect to app
 
-    style P fill:#f9f,stroke:#333,stroke-width:1px
-    style S fill:#bbf,stroke:#333,stroke-width:1px
-    style F fill:#bfb,stroke:#333,stroke-width:1px
-    style I fill:#fbb,stroke:#333,stroke-width:1px
+    S->>F: Create or update household membership
+    S->>F: Mark invite as accepted
+
+    S-->>I: Success - redirect to app
 ```
 
 ## Data Flow
@@ -1094,7 +1100,8 @@ The build output includes:
 - `dist/assets/`: hashed CSS and JS files
 - `dist/server.cjs`: Bundled Express server
 - `firebase-applet-config.json`: Firebase configuration copy
-
+- 
+<a id="ci-cd"></a> 
 ## CI/CD
 
 The application uses GitHub Actions for continuous integration and deployment.
@@ -1105,16 +1112,20 @@ The application uses GitHub Actions for continuous integration and deployment.
 flowchart TD
     A[Push/PR to main] --> B[Lint & TypeCheck]
     A --> C[Unit Tests]
+
     B --> D[Build Application]
     C --> D
+
     D --> E[Security Audit]
-    D --> F[Deploy Preview (Vercel)]
-    D --> G[Deploy Production (Vercel)]
-    D --> H[Build & Push Docker Image]
-    E --> I[Notify on Failure]
-    F --> I
-    G --> I
-    H --> I
+
+    E -->|Pass| F[Deploy Preview - Vercel]
+    E -->|Pass| G[Deploy Production - Vercel]
+    E -->|Pass| H[Build & Push Docker Image]
+
+    E -->|Fail| I[Notify on Failure]
+    F --> J[Deployment Complete]
+    G --> J
+    H --> J
 ```
 
 ### Jobs
@@ -1698,7 +1709,7 @@ docker run --rm -it expense-planner sh
   - Scales well to additional financial domains
   - Makes the codebase approachable for new contributors
 
-### Decision: GitHub Actions CI/CD Pipeline
+### Decision: GitHub Actions  Pipeline
 
 - **Evidence**:
   - `.github/workflows/ci-cd.yml` defines lint, test, build, security audit, deploy
@@ -1808,7 +1819,7 @@ The application can be deployed via:
 - **Vercel**: Using GitHub Actions (`vercel deploy --prebuilt`) or Vercel CLI
 - **Docker**: Using `docker compose up --build` or manual `docker run`
 - **Traditional Node.js**: Using `npm run build` then `node dist/server.cjs`
-  The CI/CD pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
+  The  pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
 
 ### Is the application suitable for business use?
 
