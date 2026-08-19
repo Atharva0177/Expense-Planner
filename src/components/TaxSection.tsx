@@ -1,32 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../src/contexts/AuthContext";
-import { getIncomes, getTaxCalculations, saveTaxCalculation, deleteTaxCalculation } from "../lib/db";
-import { 
-  calculateIndianTaxMaster, 
-  IndianTaxInputs, 
-  TaxComparisonResult 
+import {
+  getIncomes,
+  getTaxCalculations,
+  saveTaxCalculation,
+  deleteTaxCalculation,
+} from "../lib/db";
+import {
+  calculateIndianTaxMaster,
+  IndianTaxInputs,
+  TaxComparisonResult,
 } from "../lib/taxUtils";
 import { HraCalculatorModal } from "./tax/HraCalculatorModal";
 import { CapitalGainsCalculator } from "./tax/CapitalGainsCalculator";
 import { AdvanceTaxPlanner } from "./tax/AdvanceTaxPlanner";
 import { TaxFilingSummaryModal } from "./tax/TaxFilingSummaryModal";
-import { 
-  Calculator, 
-  Sparkles, 
-  Check, 
-  Home, 
-  TrendingUp, 
-  Calendar, 
-  ShieldCheck, 
-  Bookmark, 
-  FileText, 
-  Trash2, 
-  Info, 
+import {
+  Calculator,
+  Sparkles,
+  Check,
+  Home,
+  TrendingUp,
+  Calendar,
+  ShieldCheck,
+  Bookmark,
+  FileText,
+  Trash2,
+  Info,
   ArrowRight,
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
 } from "lucide-react";
 
 export function TaxSection({ currentMonth }: { currentMonth: string }) {
@@ -35,8 +40,12 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   // Financial Year Selector
-  const [financialYear, setFinancialYear] = useState<"2024-25" | "2025-26" | "2026-27">("2024-25");
-  const [ageCategory, setAgeCategory] = useState<"general" | "senior" | "super_senior">("general");
+  const [financialYear, setFinancialYear] = useState<
+    "2024-25" | "2025-26" | "2026-27"
+  >("2024-25");
+  const [ageCategory, setAgeCategory] = useState<
+    "general" | "senior" | "super_senior"
+  >("general");
 
   // Income States
   const [grossSalary, setGrossSalary] = useState<number>(1200000);
@@ -112,7 +121,7 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
     eighty_tta_ttb: savingsInterest,
     other_deductions: otherDeductions,
     tds_deducted: tdsDeducted,
-    advance_tax_paid: advanceTaxPaid
+    advance_tax_paid: advanceTaxPaid,
   };
 
   const result: TaxComparisonResult = calculateIndianTaxMaster(taxInputs);
@@ -141,7 +150,12 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
       const incomes = await getIncomes(user.uid, currentMonth);
       if (incomes && incomes.length > 0) {
         const entry = incomes[0];
-        const monthlyGross = entry.basic + entry.hra + entry.special_allowance + entry.bonus + entry.other;
+        const monthlyGross =
+          entry.basic +
+          entry.hra +
+          entry.special_allowance +
+          entry.bonus +
+          entry.other;
         const annualGross = monthlyGross * 12;
         const annualBasic = (entry.basic || 0) * 12;
         const annualHra = (entry.hra || 0) * 12;
@@ -161,7 +175,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
         setSaveStatus("Values auto-filled from current month payslip!");
         setTimeout(() => setSaveStatus(null), 4000);
       } else {
-        setSaveStatus("No income entry found for current month. Please enter manually.");
+        setSaveStatus(
+          "No income entry found for current month. Please enter manually.",
+        );
         setTimeout(() => setSaveStatus(null), 4000);
       }
     } catch (e) {
@@ -207,7 +223,7 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
         breakeven_deduction: result.breakeven_deductions,
         tds_deducted: tdsDeducted,
         advance_tax_paid: advanceTaxPaid,
-        net_tax_payable_or_refund: result.net_payable_or_refund.balance
+        net_tax_payable_or_refund: result.net_payable_or_refund.balance,
       });
       setSaveStatus("Tax Calculation Plan saved to your account!");
       await loadSavedPlans();
@@ -229,7 +245,6 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 animate-in fade-in">
-      
       {/* Top Banner & Financial Year Selection */}
       <div className="bg-white dark:bg-[#1A1A1A] border border-[#1A1A1A] dark:border-[#383838] p-4 sm:p-6 md:p-8 shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] relative">
         <span className="absolute -top-3 left-4 bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">
@@ -242,14 +257,17 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
               Income Tax & Regime Comparison
             </h2>
             <p className="text-[10px] uppercase font-bold tracking-widest text-[#777] dark:text-[#999] mt-0.5">
-              Comprehensive Analysis for Salaried, Business & Capital Gains Taxpayers
+              Comprehensive Analysis for Salaried, Business & Capital Gains
+              Taxpayers
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Financial Year Selector */}
             <div className="flex items-center gap-1 border border-[#1A1A1A] dark:border-[#555] bg-[#FCFAF7] dark:bg-[#242424] p-1 font-mono text-xs">
-              <span className="text-[9px] uppercase font-bold text-[#666] dark:text-[#AAA] px-1">FY:</span>
+              <span className="text-[9px] uppercase font-bold text-[#666] dark:text-[#AAA] px-1">
+                FY:
+              </span>
               {(["2024-25", "2025-26"] as const).map((fy) => (
                 <button
                   key={fy}
@@ -327,7 +345,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 placeholder="e.g. 600000"
                 className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs"
               />
-              <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Basis for HRA and NPS calculations</p>
+              <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                Basis for HRA and NPS calculations
+              </p>
             </div>
 
             <div>
@@ -352,7 +372,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 placeholder="0"
                 className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs"
               />
-              <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Tax-exempt rent allowance under Sec 10(13A)</p>
+              <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                Tax-exempt rent allowance under Sec 10(13A)
+              </p>
             </div>
           </div>
 
@@ -381,7 +403,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                   placeholder="0"
                   className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs font-bold"
                 />
-                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Max ₹1.5 Lakh</p>
+                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                  Max ₹1.5 Lakh
+                </p>
               </div>
 
               <div>
@@ -397,7 +421,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                   placeholder="0"
                   className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                 />
-                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Exclusive NPS ₹50,000</p>
+                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                  Exclusive NPS ₹50,000
+                </p>
               </div>
 
               <div>
@@ -407,12 +433,14 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 <input
                   type="number"
                   min={0}
-                  value={(eightyDSelf + eightyDParents) || ""}
+                  value={eightyDSelf + eightyDParents || ""}
                   onChange={(e) => setEightyDSelf(Number(e.target.value))}
                   placeholder="0"
                   className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                 />
-                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Self + Parents (₹25k-₹1L)</p>
+                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                  Self + Parents (₹25k-₹1L)
+                </p>
               </div>
 
               <div>
@@ -428,7 +456,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                   placeholder="0"
                   className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                 />
-                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Max ₹2 Lakh (Self Occupied)</p>
+                <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                  Max ₹2 Lakh (Self Occupied)
+                </p>
               </div>
             </div>
 
@@ -439,8 +469,16 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 onClick={() => setShowAdvancedIncome(!showAdvancedIncome)}
                 className="text-[10px] uppercase font-bold text-[#1A1A1A] dark:text-[#CCC] hover:underline flex items-center gap-1"
               >
-                {showAdvancedIncome ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                <span>{showAdvancedIncome ? "Hide Advanced Incomes & Deductions" : "Show More Deductions (NPS Employer 80CCD(2), 80E, 80G, Interest)"}</span>
+                {showAdvancedIncome ? (
+                  <ChevronUp className="w-3 h-3" />
+                ) : (
+                  <ChevronDown className="w-3 h-3" />
+                )}
+                <span>
+                  {showAdvancedIncome
+                    ? "Hide Advanced Incomes & Deductions"
+                    : "Show More Deductions (NPS Employer 80CCD(2), 80E, 80G, Interest)"}
+                </span>
               </button>
 
               {showAdvancedIncome && (
@@ -457,7 +495,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                       placeholder="0"
                       className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                     />
-                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">Eligible in New Regime (14% Basic)</p>
+                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                      Eligible in New Regime (14% Basic)
+                    </p>
                   </div>
 
                   <div>
@@ -472,7 +512,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                       placeholder="0"
                       className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                     />
-                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">100% deduction for 8 years</p>
+                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                      100% deduction for 8 years
+                    </p>
                   </div>
 
                   <div>
@@ -487,7 +529,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                       placeholder="0"
                       className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                     />
-                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">PMNRF, Clean Ganga, etc.</p>
+                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                      PMNRF, Clean Ganga, etc.
+                    </p>
                   </div>
 
                   <div>
@@ -498,11 +542,15 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                       type="number"
                       min={0}
                       value={savingsInterest || ""}
-                      onChange={(e) => setSavingsInterest(Number(e.target.value))}
+                      onChange={(e) =>
+                        setSavingsInterest(Number(e.target.value))
+                      }
                       placeholder="0"
                       className="w-full px-2.5 py-1.5 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] text-xs"
                     />
-                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">80TTA exempts up to ₹10k</p>
+                    <p className="text-[9px] text-[#777] dark:text-[#999] mt-0.5">
+                      80TTA exempts up to ₹10k
+                    </p>
                   </div>
                 </div>
               )}
@@ -518,7 +566,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-600 dark:text-sky-400" />
-                <span>Capital Gains Calculator (Equity 12.5% LTCG, 20% STCG)</span>
+                <span>
+                  Capital Gains Calculator (Equity 12.5% LTCG, 20% STCG)
+                </span>
               </div>
               <span className="text-[10px] text-[#666] dark:text-[#AAA]">
                 {showCapitalGains ? "Hide ▲" : "Expand ▼"}
@@ -563,7 +613,11 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 setTdsDeducted={setTdsDeducted}
                 advanceTaxPaid={advanceTaxPaid}
                 setAdvanceTaxPaid={setAdvanceTaxPaid}
-                totalTaxLiability={result.recommended_regime === "new" ? result.new_regime.total_tax : result.old_regime.total_tax}
+                totalTaxLiability={
+                  result.recommended_regime === "new"
+                    ? result.new_regime.total_tax
+                    : result.old_regime.total_tax
+                }
               />
             )}
           </div>
@@ -572,16 +626,18 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
       {/* Main Results: Side-by-Side Regime Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        
         {/* NEW REGIME CARD (DEFAULT) */}
-        <div className={`p-4 sm:p-6 md:p-8 border-2 ${
-          result.recommended_regime === "new" 
-            ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/20" 
-            : "border-[#1A1A1A] dark:border-[#383838] bg-white dark:bg-[#1A1A1A]"
-        } relative shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] flex flex-col justify-between`}>
+        <div
+          className={`p-4 sm:p-6 md:p-8 border-2 ${
+            result.recommended_regime === "new"
+              ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/20"
+              : "border-[#1A1A1A] dark:border-[#383838] bg-white dark:bg-[#1A1A1A]"
+          } relative shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] flex flex-col justify-between`}
+        >
           {result.recommended_regime === "new" && (
             <span className="absolute -top-3 left-4 bg-[#2A4B3A] dark:bg-emerald-600 text-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1 font-mono">
-              <Check className="w-3 h-3" /> Recommended (Saves ₹{result.tax_difference.toLocaleString("en-IN")})
+              <Check className="w-3 h-3" /> Recommended (Saves ₹
+              {result.tax_difference.toLocaleString("en-IN")})
             </span>
           )}
 
@@ -603,42 +659,66 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
             <div className="space-y-2.5 font-mono text-xs text-[#1A1A1A] dark:text-[#F0ECE1]">
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1">
                 <span>Gross Income (Salary + Other)</span>
-                <span className="font-bold">₹{result.new_regime.gross_income.toLocaleString("en-IN")}</span>
+                <span className="font-bold">
+                  ₹{result.new_regime.gross_income.toLocaleString("en-IN")}
+                </span>
               </div>
-              
+
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-[#2A4B3A] dark:text-emerald-400">
                 <span>Total Deductions (Std ₹75k + NPS 14%)</span>
-                <span>- ₹{result.new_regime.total_deductions.toLocaleString("en-IN")}</span>
+                <span>
+                  - ₹
+                  {result.new_regime.total_deductions.toLocaleString("en-IN")}
+                </span>
               </div>
 
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1">
                 <span className="font-bold">Net Taxable Income</span>
-                <span className="font-bold">₹{result.new_regime.taxable_income.toLocaleString("en-IN")}</span>
+                <span className="font-bold">
+                  ₹{result.new_regime.taxable_income.toLocaleString("en-IN")}
+                </span>
               </div>
 
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-[#555] dark:text-[#AAA]">
                 <span>Slab Computed Tax</span>
-                <span>₹{(result.new_regime.slab_tax + result.new_regime.rebate_87a).toLocaleString("en-IN")}</span>
+                <span>
+                  ₹
+                  {(
+                    result.new_regime.slab_tax + result.new_regime.rebate_87a
+                  ).toLocaleString("en-IN")}
+                </span>
               </div>
 
               {result.new_regime.rebate_87a > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-emerald-600 dark:text-emerald-400">
                   <span>Section 87A Tax Rebate (Up to ₹7L)</span>
-                  <span>- ₹{result.new_regime.rebate_87a.toLocaleString("en-IN")}</span>
+                  <span>
+                    - ₹{result.new_regime.rebate_87a.toLocaleString("en-IN")}
+                  </span>
                 </div>
               )}
 
               {result.new_regime.marginal_relief_87a > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-emerald-600 dark:text-emerald-400">
                   <span>87A Marginal Relief</span>
-                  <span>- ₹{result.new_regime.marginal_relief_87a.toLocaleString("en-IN")}</span>
+                  <span>
+                    - ₹
+                    {result.new_regime.marginal_relief_87a.toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
                 </div>
               )}
 
               {result.new_regime.capital_gains_tax > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-blue-600 dark:text-sky-400">
                   <span>Capital Gains Tax</span>
-                  <span>+ ₹{result.new_regime.capital_gains_tax.toLocaleString("en-IN")}</span>
+                  <span>
+                    + ₹
+                    {result.new_regime.capital_gains_tax.toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
                 </div>
               )}
 
@@ -649,13 +729,17 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
               <div className="flex justify-between border-b-2 border-[#1A1A1A] dark:border-[#383838] pt-2 pb-1 text-sm font-bold">
                 <span>Total Annual Tax Liability:</span>
-                <span className="text-red-700 dark:text-rose-400">₹{result.new_regime.total_tax.toLocaleString("en-IN")}</span>
+                <span className="text-red-700 dark:text-rose-400">
+                  ₹{result.new_regime.total_tax.toLocaleString("en-IN")}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-[#1A1A1A] dark:border-[#383838] flex justify-between items-center">
-            <span className="font-mono text-xs uppercase font-bold text-[#666] dark:text-[#AAA]">Monthly Take-Home:</span>
+            <span className="font-mono text-xs uppercase font-bold text-[#666] dark:text-[#AAA]">
+              Monthly Take-Home:
+            </span>
             <span className="font-serif italic text-lg sm:text-xl font-bold text-green-900 dark:text-emerald-400">
               ₹{result.new_regime.monthly_take_home.toLocaleString("en-IN")}/mo
             </span>
@@ -663,14 +747,17 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
         </div>
 
         {/* OLD REGIME CARD */}
-        <div className={`p-4 sm:p-6 md:p-8 border-2 ${
-          result.recommended_regime === "old" 
-            ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/20" 
-            : "border-[#1A1A1A] dark:border-[#383838] bg-white dark:bg-[#1A1A1A]"
-        } relative shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] flex flex-col justify-between`}>
+        <div
+          className={`p-4 sm:p-6 md:p-8 border-2 ${
+            result.recommended_regime === "old"
+              ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/20"
+              : "border-[#1A1A1A] dark:border-[#383838] bg-white dark:bg-[#1A1A1A]"
+          } relative shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] flex flex-col justify-between`}
+        >
           {result.recommended_regime === "old" && (
             <span className="absolute -top-3 left-4 bg-[#2A4B3A] dark:bg-emerald-600 text-white px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest inline-flex items-center gap-1 font-mono">
-              <Check className="w-3 h-3" /> Recommended (Saves ₹{result.tax_difference.toLocaleString("en-IN")})
+              <Check className="w-3 h-3" /> Recommended (Saves ₹
+              {result.tax_difference.toLocaleString("en-IN")})
             </span>
           )}
 
@@ -692,35 +779,54 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
             <div className="space-y-2.5 font-mono text-xs text-[#1A1A1A] dark:text-[#F0ECE1]">
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1">
                 <span>Gross Income (Salary + Other)</span>
-                <span className="font-bold">₹{result.old_regime.gross_income.toLocaleString("en-IN")}</span>
+                <span className="font-bold">
+                  ₹{result.old_regime.gross_income.toLocaleString("en-IN")}
+                </span>
               </div>
-              
+
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-[#2A4B3A] dark:text-emerald-400">
                 <span>Total Deductions & Exemptions</span>
-                <span>- ₹{result.old_regime.total_deductions.toLocaleString("en-IN")}</span>
+                <span>
+                  - ₹
+                  {result.old_regime.total_deductions.toLocaleString("en-IN")}
+                </span>
               </div>
 
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1">
                 <span className="font-bold">Net Taxable Income</span>
-                <span className="font-bold">₹{result.old_regime.taxable_income.toLocaleString("en-IN")}</span>
+                <span className="font-bold">
+                  ₹{result.old_regime.taxable_income.toLocaleString("en-IN")}
+                </span>
               </div>
 
               <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-[#555] dark:text-[#AAA]">
                 <span>Slab Computed Tax</span>
-                <span>₹{(result.old_regime.slab_tax + result.old_regime.rebate_87a).toLocaleString("en-IN")}</span>
+                <span>
+                  ₹
+                  {(
+                    result.old_regime.slab_tax + result.old_regime.rebate_87a
+                  ).toLocaleString("en-IN")}
+                </span>
               </div>
 
               {result.old_regime.rebate_87a > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-emerald-600 dark:text-emerald-400">
                   <span>Section 87A Tax Rebate (Up to ₹5L)</span>
-                  <span>- ₹{result.old_regime.rebate_87a.toLocaleString("en-IN")}</span>
+                  <span>
+                    - ₹{result.old_regime.rebate_87a.toLocaleString("en-IN")}
+                  </span>
                 </div>
               )}
 
               {result.old_regime.capital_gains_tax > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-blue-600 dark:text-sky-400">
                   <span>Capital Gains Tax</span>
-                  <span>+ ₹{result.old_regime.capital_gains_tax.toLocaleString("en-IN")}</span>
+                  <span>
+                    + ₹
+                    {result.old_regime.capital_gains_tax.toLocaleString(
+                      "en-IN",
+                    )}
+                  </span>
                 </div>
               )}
 
@@ -731,13 +837,17 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
               <div className="flex justify-between border-b-2 border-[#1A1A1A] dark:border-[#383838] pt-2 pb-1 text-sm font-bold">
                 <span>Total Annual Tax Liability:</span>
-                <span className="text-red-700 dark:text-rose-400">₹{result.old_regime.total_tax.toLocaleString("en-IN")}</span>
+                <span className="text-red-700 dark:text-rose-400">
+                  ₹{result.old_regime.total_tax.toLocaleString("en-IN")}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-[#1A1A1A] dark:border-[#383838] flex justify-between items-center">
-            <span className="font-mono text-xs uppercase font-bold text-[#666] dark:text-[#AAA]">Monthly Take-Home:</span>
+            <span className="font-mono text-xs uppercase font-bold text-[#666] dark:text-[#AAA]">
+              Monthly Take-Home:
+            </span>
             <span className="font-serif italic text-lg sm:text-xl font-bold text-green-900 dark:text-emerald-400">
               ₹{result.old_regime.monthly_take_home.toLocaleString("en-IN")}/mo
             </span>
@@ -787,9 +897,14 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
           </p>
           <div className="space-y-1.5">
             {result.recommendations.map((rec, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-2 bg-[#FCFAF7] dark:bg-[#202020] border border-[#EBE7DF] dark:border-[#333]">
+              <div
+                key={idx}
+                className="flex items-start gap-2 p-2 bg-[#FCFAF7] dark:bg-[#202020] border border-[#EBE7DF] dark:border-[#333]"
+              >
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 text-[#2A4B3A] dark:text-emerald-400 mt-0.5" />
-                <span className="text-[#333] dark:text-[#DDD] text-[11px] leading-relaxed">{rec}</span>
+                <span className="text-[#333] dark:text-[#DDD] text-[11px] leading-relaxed">
+                  {rec}
+                </span>
               </div>
             ))}
           </div>
@@ -827,13 +942,26 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
           <div className="divide-y divide-[#EBE7DF] dark:divide-[#2E2E2E]">
             {savedPlans.map((plan) => (
-              <div key={plan.id} className="py-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+              <div
+                key={plan.id}
+                className="py-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs"
+              >
                 <div>
                   <span className="font-bold text-[#1A1A1A] dark:text-white">
-                    FY {plan.financial_year} — Gross ₹{(plan.gross_salary || 0).toLocaleString("en-IN")}
+                    FY {plan.financial_year} — Gross ₹
+                    {(plan.gross_salary || 0).toLocaleString("en-IN")}
                   </span>
                   <span className="text-[10px] text-[#777] dark:text-[#AAA] ml-2">
-                    Recommended: <strong className="uppercase">{plan.recommended_regime} Regime</strong> (Tax: ₹{(plan.recommended_regime === "new" ? plan.new_regime_tax : plan.old_regime_tax || 0).toLocaleString("en-IN")})
+                    Recommended:{" "}
+                    <strong className="uppercase">
+                      {plan.recommended_regime} Regime
+                    </strong>{" "}
+                    (Tax: ₹
+                    {(plan.recommended_regime === "new"
+                      ? plan.new_regime_tax
+                      : plan.old_regime_tax || 0
+                    ).toLocaleString("en-IN")}
+                    )
                   </span>
                 </div>
                 <button
@@ -860,7 +988,9 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
           setHraExemption(exempt);
           setRentPaid(rent);
           setIsMetro(metro);
-          setSaveStatus(`HRA Exemption of ₹${exempt.toLocaleString("en-IN")} applied!`);
+          setSaveStatus(
+            `HRA Exemption of ₹${exempt.toLocaleString("en-IN")} applied!`,
+          );
           setTimeout(() => setSaveStatus(null), 4000);
         }}
       />
@@ -871,7 +1001,6 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
         result={result}
         userEmail={user?.email || ""}
       />
-
     </div>
   );
 }

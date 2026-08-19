@@ -31,11 +31,13 @@ docker compose down
 ## 2. Manual Docker Build and Run
 
 ### Build the Image
+
 ```bash
 docker build -t expense-planner .
 ```
 
 ### Run the Container
+
 ```bash
 docker run -d \
   -p 3000:3000 \
@@ -48,10 +50,10 @@ docker run -d \
 
 ## 3. Environment Variables
 
-| Variable | Description | Default / Required |
-| :--- | :--- | :--- |
-| `NODE_ENV` | Runtime environment mode | `production` |
-| `PORT` | HTTP port for the application | `3000` |
+| Variable         | Description                                | Default / Required     |
+| :--------------- | :----------------------------------------- | :--------------------- |
+| `NODE_ENV`       | Runtime environment mode                   | `production`           |
+| `PORT`           | HTTP port for the application              | `3000`                 |
 | `GEMINI_API_KEY` | Google Gemini API Key for receipt scanning | Optional / Recommended |
 
 ---

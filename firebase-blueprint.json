@@ -27,7 +27,10 @@
         "household_id": { "type": "string" },
         "user_id": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["primary", "spouse", "dependent"] },
+        "role": {
+          "type": "string",
+          "enum": ["primary", "spouse", "dependent"]
+        },
         "joined_at": { "type": "string", "format": "date-time" }
       }
     },
@@ -40,7 +43,10 @@
         "email": { "type": "string" },
         "invite_code": { "type": "string" },
         "role": { "type": "string", "enum": ["spouse", "dependent"] },
-        "status": { "type": "string", "enum": ["pending", "accepted", "expired"] },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "expired"]
+        },
         "expires_at": { "type": "string", "format": "date-time" },
         "created_at": { "type": "string", "format": "date-time" }
       }
@@ -113,7 +119,10 @@
         "user_id": { "type": "string" },
         "household_id": { "type": "string" },
         "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["mutual_fund", "stock", "fd", "ppf", "nps", "gold"] },
+        "type": {
+          "type": "string",
+          "enum": ["mutual_fund", "stock", "fd", "ppf", "nps", "gold"]
+        },
         "folio_number": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       }

@@ -41,10 +41,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            amount: { type: Type.NUMBER, description: "Total amount on the receipt." },
-            date: { type: Type.STRING, description: "Date of the transaction in YYYY-MM-DD format." },
-            merchant: { type: Type.STRING, description: "Name of the merchant or a brief note describing the expense." },
-            category: { type: Type.STRING, description: "A one word general category for this expense (e.g. Food, Groceries, Travel, Shopping, Bills)." },
+            amount: {
+              type: Type.NUMBER,
+              description: "Total amount on the receipt.",
+            },
+            date: {
+              type: Type.STRING,
+              description: "Date of the transaction in YYYY-MM-DD format.",
+            },
+            merchant: {
+              type: Type.STRING,
+              description:
+                "Name of the merchant or a brief note describing the expense.",
+            },
+            category: {
+              type: Type.STRING,
+              description:
+                "A one word general category for this expense (e.g. Food, Groceries, Travel, Shopping, Bills).",
+            },
           },
           required: ["amount", "date", "merchant", "category"],
         },
@@ -61,6 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(result);
   } catch (error: any) {
     console.error("Receipt scan error:", error);
-    return res.status(500).json({ error: error.message || "Failed to scan receipt" });
+    return res
+      .status(500)
+      .json({ error: error.message || "Failed to scan receipt" });
   }
 }

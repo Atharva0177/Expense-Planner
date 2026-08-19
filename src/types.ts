@@ -27,7 +27,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { name: "Festivals & Gifts", type: "fixed", is_default: true },
   { name: "Travel", type: "fixed", is_default: true },
   { name: "Shopping", type: "fixed", is_default: true },
-  { name: "Miscellaneous", type: "fixed", is_default: true }
+  { name: "Miscellaneous", type: "fixed", is_default: true },
 ];
 
 export interface IncomeEntry {
@@ -204,7 +204,8 @@ export interface InvestmentAccount {
   id?: string;
   user_id: string;
   household_id?: string;
-  type: "mutual_fund" | "stock" | "fd" | "ppf" | "nps" | "gold" | "other" | string;
+  type:
+    "mutual_fund" | "stock" | "fd" | "ppf" | "nps" | "gold" | "other" | string;
   custom_type_description?: string;
   name: string;
   folio_number?: string;

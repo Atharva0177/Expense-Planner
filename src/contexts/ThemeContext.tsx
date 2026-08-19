@@ -14,7 +14,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem("expense_planner_theme") as Theme | null;
-    return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+    return saved === "light" || saved === "dark" || saved === "system"
+      ? saved
+      : "system";
   });
 
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -35,7 +37,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } else if (theme === "light") {
         resolvedDark = false;
       } else {
-        resolvedDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        resolvedDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches;
       }
 
       setIsDark(resolvedDark);

@@ -15,17 +15,26 @@ export function HraCalculatorModal({
   onClose,
   onApply,
   initialBasicSalary = 0,
-  initialHraReceived = 0
+  initialHraReceived = 0,
 }: HraCalculatorModalProps) {
-  const [basicSalary, setBasicSalary] = useState<number>(initialBasicSalary || 600000);
-  const [hraReceived, setHraReceived] = useState<number>(initialHraReceived || 240000);
+  const [basicSalary, setBasicSalary] = useState<number>(
+    initialBasicSalary || 600000,
+  );
+  const [hraReceived, setHraReceived] = useState<number>(
+    initialHraReceived || 240000,
+  );
   const [monthlyRent, setMonthlyRent] = useState<number>(25000);
   const [isMetro, setIsMetro] = useState<boolean>(true);
 
   if (!isOpen) return null;
 
   const annualRent = monthlyRent * 12;
-  const result = calculateHRAExemption(basicSalary, hraReceived, annualRent, isMetro);
+  const result = calculateHRAExemption(
+    basicSalary,
+    hraReceived,
+    annualRent,
+    isMetro,
+  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
@@ -37,8 +46,8 @@ export function HraCalculatorModal({
               HRA Exemption Calculator
             </h3>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="text-xs font-mono p-1 border border-transparent hover:border-[#1A1A1A] dark:hover:border-white text-[#888] hover:text-black dark:hover:text-white"
           >
             <X className="w-4 h-4" />
@@ -46,7 +55,11 @@ export function HraCalculatorModal({
         </div>
 
         <p className="text-xs font-mono text-[#555] dark:text-[#AAA]">
-          Calculates your tax-free House Rent Allowance under <span className="font-bold text-[#1A1A1A] dark:text-white">Section 10(13A) & Rule 2A</span> of the Income Tax Act.
+          Calculates your tax-free House Rent Allowance under{" "}
+          <span className="font-bold text-[#1A1A1A] dark:text-white">
+            Section 10(13A) & Rule 2A
+          </span>{" "}
+          of the Income Tax Act.
         </p>
 
         {/* Input Fields */}
@@ -93,7 +106,7 @@ export function HraCalculatorModal({
                 className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-white dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-bold"
               />
               <span className="text-[10px] text-[#666] dark:text-[#AAA] whitespace-nowrap">
-                = ₹{(annualRent).toLocaleString("en-IN")}/yr
+                = ₹{annualRent.toLocaleString("en-IN")}/yr
               </span>
             </div>
           </div>
@@ -138,19 +151,32 @@ export function HraCalculatorModal({
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#666] dark:text-[#AAA]">
             Exemption is Least of the Following:
           </p>
-          
+
           <div className="space-y-1.5 text-[11px]">
-            <div className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.actualHRA ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}>
+            <div
+              className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.actualHRA ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}
+            >
               <span>1. Actual HRA Received:</span>
               <span>₹{result.breakdown.actualHRA.toLocaleString("en-IN")}</span>
             </div>
-            <div className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.percentageOfBasic ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}>
+            <div
+              className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.percentageOfBasic ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}
+            >
               <span>2. {result.metroPercentage}% of Basic Salary:</span>
-              <span>₹{result.breakdown.percentageOfBasic.toLocaleString("en-IN")}</span>
+              <span>
+                ₹{result.breakdown.percentageOfBasic.toLocaleString("en-IN")}
+              </span>
             </div>
-            <div className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.rentMinusTenPercentBasic ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}>
+            <div
+              className={`flex justify-between p-1.5 rounded ${result.exemptAmount === result.breakdown.rentMinusTenPercentBasic ? "bg-emerald-100 dark:bg-emerald-950/60 font-bold text-emerald-900 dark:text-emerald-300" : "text-[#555] dark:text-[#AAA]"}`}
+            >
               <span>3. Rent Paid minus 10% Basic:</span>
-              <span>₹{result.breakdown.rentMinusTenPercentBasic.toLocaleString("en-IN")}</span>
+              <span>
+                ₹
+                {result.breakdown.rentMinusTenPercentBasic.toLocaleString(
+                  "en-IN",
+                )}
+              </span>
             </div>
           </div>
 
@@ -165,7 +191,9 @@ export function HraCalculatorModal({
 
           <div className="flex justify-between text-[11px] text-[#666] dark:text-[#AAA]">
             <span>Taxable HRA (added to salary):</span>
-            <span className="font-mono font-bold">₹{result.taxableHRA.toLocaleString("en-IN")}</span>
+            <span className="font-mono font-bold">
+              ₹{result.taxableHRA.toLocaleString("en-IN")}
+            </span>
           </div>
         </div>
 
@@ -174,7 +202,9 @@ export function HraCalculatorModal({
           <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-[11px] font-mono flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              <strong>Landlord PAN Mandatory:</strong> Because your annual rent exceeds ₹1,00,000, you must obtain and submit your landlord's PAN to your employer for Form 16 proof.
+              <strong>Landlord PAN Mandatory:</strong> Because your annual rent
+              exceeds ₹1,00,000, you must obtain and submit your landlord's PAN
+              to your employer for Form 16 proof.
             </span>
           </div>
         )}
@@ -197,7 +227,9 @@ export function HraCalculatorModal({
             className="px-4 py-1.5 bg-[#2A4B3A] dark:bg-emerald-600 text-white text-[10px] font-mono uppercase font-bold tracking-wider hover:opacity-90 flex items-center gap-1.5 shadow-[2px_2px_0px_#1A1A1A]"
           >
             <Check className="w-3.5 h-3.5" />
-            <span>Apply Exemption (₹{result.exemptAmount.toLocaleString("en-IN")})</span>
+            <span>
+              Apply Exemption (₹{result.exemptAmount.toLocaleString("en-IN")})
+            </span>
           </button>
         </div>
       </div>

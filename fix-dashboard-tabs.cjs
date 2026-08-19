@@ -1,5 +1,5 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/pages/Dashboard.tsx', 'utf8');
+const fs = require("fs");
+let code = fs.readFileSync("src/pages/Dashboard.tsx", "utf8");
 
 // The string we injected earlier
 const badInjection = `        {/* Navigation Tabs */}
@@ -33,4 +33,4 @@ const goodInjection = `        {/* Navigation Tabs */}
           )}`;
 
 code = code.replace(badInjection, goodInjection);
-fs.writeFileSync('src/pages/Dashboard.tsx', code);
+fs.writeFileSync("src/pages/Dashboard.tsx", code);

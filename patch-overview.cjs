@@ -1,26 +1,23 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/components/OverviewSection.tsx', 'utf8');
+const fs = require("fs");
+let code = fs.readFileSync("src/components/OverviewSection.tsx", "utf8");
 
 // Add imports
 code = code.replace(
   'import { Transaction, IncomeEntry, Budget, Goal, Loan } from "../types";',
-  'import { Transaction, IncomeEntry, Budget, Goal, Loan, HouseholdMember } from "../types";\nimport { getHouseholdMembers } from "../lib/db_household";'
+  'import { Transaction, IncomeEntry, Budget, Goal, Loan, HouseholdMember } from "../types";\nimport { getHouseholdMembers } from "../lib/db_household";',
 );
 
 // Add state
 code = code.replace(
-  'const [loans, setLoans] = useState<Loan[]>([]);',
-  'const [loans, setLoans] = useState<Loan[]>([]);\n  const [members, setMembers] = useState<HouseholdMember[]>([]);\n  const [showMemberBreakdown, setShowMemberBreakdown] = useState(false);'
+  "const [loans, setLoans] = useState<Loan[]>([]);",
+  "const [loans, setLoans] = useState<Loan[]>([]);\n  const [members, setMembers] = useState<HouseholdMember[]>([]);\n  const [showMemberBreakdown, setShowMemberBreakdown] = useState(false);",
 );
 
 // Update fetch
+code = code.replace("getLoans(user.uid)", "getLoans(user.uid)");
 code = code.replace(
-  'getLoans(user.uid)',
-  'getLoans(user.uid)'
-);
-code = code.replace(
-  'setLoans(loanData);',
-  'setLoans(loanData);\n      if (user) {\n        import("../lib/db_household").then(({getHouseholdMembership, getHouseholdMembers}) => {\n          getHouseholdMembership(user.uid).then(m => {\n            if(m) getHouseholdMembers(m.household_id).then(setMembers);\n          });\n        });\n      }'
+  "setLoans(loanData);",
+  'setLoans(loanData);\n      if (user) {\n        import("../lib/db_household").then(({getHouseholdMembership, getHouseholdMembers}) => {\n          getHouseholdMembership(user.uid).then(m => {\n            if(m) getHouseholdMembers(m.household_id).then(setMembers);\n          });\n        });\n      }',
 );
 
 // Add toggle and breakdown UI
@@ -71,4 +68,4 @@ const newSummaryUI = `
 `;
 code = code.replace(summaryUI, newSummaryUI);
 
-fs.writeFileSync('src/components/OverviewSection.tsx', code);
+fs.writeFileSync("src/components/OverviewSection.tsx", code);

@@ -20,7 +20,9 @@ export function isHeicFile(file: File): boolean {
  * Converts a HEIC/HEIF file or standard image to a JPEG base64 string and MIME type.
  * Also resizes oversized images to max 1600px to ensure fast transmission and Gemini OCR accuracy.
  */
-export async function processImageForOCR(file: File): Promise<{ imageBase64: string; mimeType: string }> {
+export async function processImageForOCR(
+  file: File,
+): Promise<{ imageBase64: string; mimeType: string }> {
   let processedBlob: Blob = file;
 
   // Step 1: If HEIC/HEIF, convert to JPEG blob using heic2any
@@ -29,9 +31,11 @@ export async function processImageForOCR(file: File): Promise<{ imageBase64: str
       const conversionResult = await heic2any({
         blob: file,
         toType: "image/jpeg",
-        quality: 0.85
+        quality: 0.85,
       });
-      processedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+      processedBlob = Array.isArray(conversionResult)
+        ? conversionResult[0]
+        : conversionResult;
     } catch (err) {
       console.warn("heic2any conversion fallback:", err);
       // fallback to original file if conversion failed
@@ -69,7 +73,7 @@ export async function processImageForOCR(file: File): Promise<{ imageBase64: str
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      
+
       if (ctx) {
         ctx.drawImage(img, 0, 0, width, height);
         const resizedDataUrl = canvas.toDataURL("image/jpeg", 0.88);

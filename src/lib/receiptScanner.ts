@@ -12,18 +12,27 @@ export interface ReceiptScanResult {
 
 export async function scanReceiptWithFallback(
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
 ): Promise<ReceiptScanResult> {
   const clientKey =
     (import.meta.env.VITE_GEMINI_API_KEY as string) ||
-    (typeof window !== "undefined" ? localStorage.getItem("expense_planner_gemini_key") : null);
+    (typeof window !== "undefined"
+      ? localStorage.getItem("expense_planner_gemini_key")
+      : null);
 
   // If a direct Gemini API key is configured (Vite env or saved in app), use direct scan
   if (clientKey && clientKey.trim()) {
     try {
-      return await scanDirectlyWithGemini(imageBase64, mimeType, clientKey.trim());
+      return await scanDirectlyWithGemini(
+        imageBase64,
+        mimeType,
+        clientKey.trim(),
+      );
     } catch (clientErr: any) {
-      console.warn("Direct Gemini scan failed, trying server API route:", clientErr);
+      console.warn(
+        "Direct Gemini scan failed, trying server API route:",
+        clientErr,
+      );
     }
   }
 
@@ -33,26 +42,28 @@ export async function scanReceiptWithFallback(
     response = await fetch("/api/scan-receipt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64, mimeType })
+      body: JSON.stringify({ imageBase64, mimeType }),
     });
 
     if (response.ok) {
       const data = await response.json();
       return data;
     }
-    
+
     if (response.status === 405 || response.status === 404) {
       // Static host without backend API support
       if (clientKey) {
         return await scanDirectlyWithGemini(imageBase64, mimeType, clientKey);
       }
       throw new Error(
-        "Static Hosting Detected (HTTP 405): POST /api/scan-receipt is not supported on this static server. Please click the 'API Key' button to enter your Gemini API key."
+        "Static Hosting Detected (HTTP 405): POST /api/scan-receipt is not supported on this static server. Please click the 'API Key' button to enter your Gemini API key.",
       );
     }
 
     const errJson = await response.json().catch(() => ({}));
-    throw new Error(errJson.error || `Server responded with status ${response.status}`);
+    throw new Error(
+      errJson.error || `Server responded with status ${response.status}`,
+    );
   } catch (err: any) {
     // If it was a network error or fetch failure and clientKey exists
     if (clientKey) {
@@ -68,9 +79,14 @@ export async function scanReceiptWithFallback(
 async function scanDirectlyWithGemini(
   imageBase64: string,
   mimeType: string,
-  apiKey: string
+  apiKey: string,
 ): Promise<ReceiptScanResult> {
-  const candidateModels = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.7-flash", "gemini-2.5-flash-lite"];
+  const candidateModels = [
+    "gemini-2.5-flash",
+    "gemini-flash-latest",
+    "gemini-3.7-flash",
+    "gemini-2.5-flash-lite",
+  ];
   let lastError: any = null;
 
   for (const model of candidateModels) {
@@ -86,26 +102,29 @@ async function scanDirectlyWithGemini(
                 {
                   inlineData: {
                     mimeType: mimeType || "image/jpeg",
-                    data: imageBase64
-                  }
+                    data: imageBase64,
+                  },
                 },
                 {
-                  text:
-                    "Analyze this image of a purchase receipt, bill, invoice, or payment confirmation. Extract the total paid amount in numerical format (INR/₹ or standard currency), the transaction date (YYYY-MM-DD), the merchant or vendor name, and the best-fitting expense category (e.g. Food, Groceries, Shopping, Travel, Bills, Healthcare, Entertainment, Utilities, Education, or Other). Respond strictly with valid JSON having the exact keys: amount (number), date (string), merchant (string), category (string)."
-                }
-              ]
-            }
+                  text: "Analyze this image of a purchase receipt, bill, invoice, or payment confirmation. Extract the total paid amount in numerical format (INR/₹ or standard currency), the transaction date (YYYY-MM-DD), the merchant or vendor name, and the best-fitting expense category (e.g. Food, Groceries, Shopping, Travel, Bills, Healthcare, Entertainment, Utilities, Education, or Other). Respond strictly with valid JSON having the exact keys: amount (number), date (string), merchant (string), category (string).",
+                },
+              ],
+            },
           ],
           generationConfig: {
-            responseMimeType: "application/json"
-          }
-        })
+            responseMimeType: "application/json",
+          },
+        }),
       });
 
       if (res.ok) {
         const resData: any = await res.json();
-        const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        const cleanedText = rawText.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+        const rawText =
+          resData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const cleanedText = rawText
+          .replace(/```json\s*/gi, "")
+          .replace(/```/g, "")
+          .trim();
         const parsed = JSON.parse(cleanedText);
         if (parsed) return parsed;
       } else {
@@ -117,6 +136,7 @@ async function scanDirectlyWithGemini(
   }
 
   throw new Error(
-    lastError?.error?.message || "Failed to analyze receipt using direct Gemini API key."
+    lastError?.error?.message ||
+      "Failed to analyze receipt using direct Gemini API key.",
   );
 }

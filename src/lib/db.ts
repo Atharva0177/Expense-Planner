@@ -1,37 +1,37 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   Timestamp,
-  writeBatch
+  writeBatch,
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { getHouseholdMembership } from "./db_household";
-import { 
-  IncomeEntry, 
-  Transaction, 
-  Category, 
-  DEFAULT_CATEGORIES, 
-  Budget, 
-  RecurringRule, 
-  Loan, 
-  LoanSchedule, 
-  Goal, 
-  TaxCalculation 
+import {
+  IncomeEntry,
+  Transaction,
+  Category,
+  DEFAULT_CATEGORIES,
+  Budget,
+  RecurringRule,
+  Loan,
+  LoanSchedule,
+  Goal,
+  TaxCalculation,
 } from "../types";
 
 export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
 }
 
 export interface FirestoreErrorInfo {
@@ -47,7 +47,11 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null,
+) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -58,9 +62,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       tenantId: auth.currentUser?.tenantId,
     },
     operationType,
-    path
+    path,
   };
-  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+  console.warn("Firestore Operation Notice: ", JSON.stringify(errInfo));
 }
 
 const hhIdCache = new Map<string, { id?: string; time: number }>();
@@ -80,7 +84,11 @@ export function clearCache(prefix?: string) {
   }
 }
 
-async function cachedFetch<T>(key: string, fetcher: () => Promise<T>, ttl = CACHE_TTL_MS): Promise<T> {
+async function cachedFetch<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttl = CACHE_TTL_MS,
+): Promise<T> {
   const cached = dataCache.get(key);
   if (cached && Date.now() - cached.time < ttl) {
     return cached.data as T;
@@ -88,14 +96,16 @@ async function cachedFetch<T>(key: string, fetcher: () => Promise<T>, ttl = CACH
   if (inFlightCache.has(key)) {
     return inFlightCache.get(key) as Promise<T>;
   }
-  const promise = fetcher().then((res) => {
-    dataCache.set(key, { data: res, time: Date.now() });
-    inFlightCache.delete(key);
-    return res;
-  }).catch((err) => {
-    inFlightCache.delete(key);
-    throw err;
-  });
+  const promise = fetcher()
+    .then((res) => {
+      dataCache.set(key, { data: res, time: Date.now() });
+      inFlightCache.delete(key);
+      return res;
+    })
+    .catch((err) => {
+      inFlightCache.delete(key);
+      throw err;
+    });
   inFlightCache.set(key, promise);
   return promise;
 }
@@ -119,28 +129,38 @@ async function getHhId(userId: string): Promise<string | undefined> {
 
 // --- Categories ---
 export async function getCategories(userId: string): Promise<Category[]> {
-  return cachedFetch(`categories_${userId}`, async () => {
-    try {
-      const q = query(
-        collection(db, "categories"),
-        where("user_id", "in", [userId, "system"])
-      );
-      
-      const snapshot = await getDocs(q);
-      const userCategories = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Category));
-      
-      // Combine defaults and custom
-      const allCategories = [...DEFAULT_CATEGORIES, ...userCategories];
-      const unique = Array.from(new Map(allCategories.map(c => [c.name, c])).values());
-      return unique;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, "categories");
-      return DEFAULT_CATEGORIES;
-    }
-  }, 60000); // 1 minute for categories
+  return cachedFetch(
+    `categories_${userId}`,
+    async () => {
+      try {
+        const q = query(
+          collection(db, "categories"),
+          where("user_id", "in", [userId, "system"]),
+        );
+
+        const snapshot = await getDocs(q);
+        const userCategories = snapshot.docs.map(
+          (d) => ({ id: d.id, ...d.data() }) as Category,
+        );
+
+        // Combine defaults and custom
+        const allCategories = [...DEFAULT_CATEGORIES, ...userCategories];
+        const unique = Array.from(
+          new Map(allCategories.map((c) => [c.name, c])).values(),
+        );
+        return unique;
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, "categories");
+        return DEFAULT_CATEGORIES;
+      }
+    },
+    60000,
+  ); // 1 minute for categories
 }
 
-export async function addCategory(category: Omit<Category, "id">): Promise<string> {
+export async function addCategory(
+  category: Omit<Category, "id">,
+): Promise<string> {
   try {
     const docRef = await addDoc(collection(db, "categories"), category);
     clearCache("categories");
@@ -152,18 +172,23 @@ export async function addCategory(category: Omit<Category, "id">): Promise<strin
 }
 
 // --- Income ---
-export async function getIncomes(userId: string, month: string): Promise<IncomeEntry[]> {
+export async function getIncomes(
+  userId: string,
+  month: string,
+): Promise<IncomeEntry[]> {
   return cachedFetch(`incomes_${userId}_${month}`, async () => {
     try {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "income_entries"),
         where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-        where("month", "==", month)
+        where("month", "==", month),
       );
-      
+
       const snapshot = await getDocs(q);
-      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeEntry));
+      const items = snapshot.docs.map(
+        (d) => ({ id: d.id, ...d.data() }) as IncomeEntry,
+      );
       return items.sort((a, b) => {
         const getMs = (val: any) => {
           if (!val) return 0;
@@ -181,13 +206,15 @@ export async function getIncomes(userId: string, month: string): Promise<IncomeE
   });
 }
 
-export async function addIncome(income: Omit<IncomeEntry, "id" | "created_at">): Promise<string> {
+export async function addIncome(
+  income: Omit<IncomeEntry, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(income.user_id);
     const payload = {
       ...income,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     };
     const docRef = await addDoc(collection(db, "income_entries"), payload);
     clearCache("incomes");
@@ -198,7 +225,10 @@ export async function addIncome(income: Omit<IncomeEntry, "id" | "created_at">):
   }
 }
 
-export async function updateIncome(id: string, updates: Partial<IncomeEntry>): Promise<void> {
+export async function updateIncome(
+  id: string,
+  updates: Partial<IncomeEntry>,
+): Promise<void> {
   try {
     const docRef = doc(db, "income_entries", id);
     await updateDoc(docRef, updates);
@@ -219,7 +249,10 @@ export async function deleteIncome(id: string): Promise<void> {
 }
 
 // --- Transactions ---
-export async function getTransactions(userId: string, monthPrefix: string): Promise<Transaction[]> {
+export async function getTransactions(
+  userId: string,
+  monthPrefix: string,
+): Promise<Transaction[]> {
   return cachedFetch(`transactions_${userId}_${monthPrefix}`, async () => {
     try {
       const hhId = await getHhId(userId);
@@ -230,11 +263,13 @@ export async function getTransactions(userId: string, monthPrefix: string): Prom
         collection(db, "transactions"),
         where(hhId ? "household_id" : "user_id", "==", hhId || userId),
         where("date", ">=", startDate),
-        where("date", "<=", endDate)
+        where("date", "<=", endDate),
       );
-      
+
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+      const data = snapshot.docs.map(
+        (d) => ({ id: d.id, ...d.data() }) as Transaction,
+      );
       return data.sort((a, b) => b.date.localeCompare(a.date));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "transactions");
@@ -243,15 +278,19 @@ export async function getTransactions(userId: string, monthPrefix: string): Prom
   });
 }
 
-export async function getAllTransactions(userId: string): Promise<Transaction[]> {
+export async function getAllTransactions(
+  userId: string,
+): Promise<Transaction[]> {
   try {
     const hhId = await getHhId(userId);
     const q = query(
       collection(db, "transactions"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
     );
     const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+    const data = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() }) as Transaction,
+    );
     return data.sort((a, b) => b.date.localeCompare(a.date));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "transactions");
@@ -264,10 +303,12 @@ export async function getAllIncomes(userId: string): Promise<IncomeEntry[]> {
     const hhId = await getHhId(userId);
     const q = query(
       collection(db, "income_entries"),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
     );
     const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as IncomeEntry));
+    const data = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() }) as IncomeEntry,
+    );
     return data.sort((a, b) => b.month.localeCompare(a.month));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "income_entries");
@@ -275,33 +316,46 @@ export async function getAllIncomes(userId: string): Promise<IncomeEntry[]> {
   }
 }
 
-export async function getTransactionsForMonths(userId: string, months: string[]): Promise<Transaction[]> {
+export async function getTransactionsForMonths(
+  userId: string,
+  months: string[],
+): Promise<Transaction[]> {
   if (months.length === 0) return [];
-  const results = await Promise.all(months.map(m => getTransactions(userId, m)));
+  const results = await Promise.all(
+    months.map((m) => getTransactions(userId, m)),
+  );
   const flattened = results.flat();
   return flattened.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export async function getIncomesForMonths(userId: string, months: string[]): Promise<IncomeEntry[]> {
+export async function getIncomesForMonths(
+  userId: string,
+  months: string[],
+): Promise<IncomeEntry[]> {
   if (months.length === 0) return [];
-  const results = await Promise.all(months.map(m => getIncomes(userId, m)));
+  const results = await Promise.all(months.map((m) => getIncomes(userId, m)));
   const flattened = results.flat();
   return flattened.sort((a, b) => b.month.localeCompare(a.month));
 }
 
-export async function getBudgetsForMonths(userId: string, months: string[]): Promise<Budget[]> {
+export async function getBudgetsForMonths(
+  userId: string,
+  months: string[],
+): Promise<Budget[]> {
   if (months.length === 0) return [];
-  const results = await Promise.all(months.map(m => getBudgets(userId, m)));
+  const results = await Promise.all(months.map((m) => getBudgets(userId, m)));
   return results.flat();
 }
 
-export async function addTransaction(transaction: Omit<Transaction, "id" | "created_at">): Promise<string> {
+export async function addTransaction(
+  transaction: Omit<Transaction, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(transaction.user_id);
     const payload = {
       ...transaction,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     };
     const docRef = await addDoc(collection(db, "transactions"), payload);
     clearCache("transactions");
@@ -312,7 +366,10 @@ export async function addTransaction(transaction: Omit<Transaction, "id" | "crea
   }
 }
 
-export async function updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
+export async function updateTransaction(
+  id: string,
+  updates: Partial<Transaction>,
+): Promise<void> {
   try {
     const docRef = doc(db, "transactions", id);
     await updateDoc(docRef, updates);
@@ -333,17 +390,20 @@ export async function deleteTransaction(id: string): Promise<void> {
 }
 
 // --- Budgets ---
-export async function getBudgets(userId: string, month: string): Promise<Budget[]> {
+export async function getBudgets(
+  userId: string,
+  month: string,
+): Promise<Budget[]> {
   return cachedFetch(`budgets_${userId}_${month}`, async () => {
     try {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "budgets"),
         where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-        where("month", "==", month)
+        where("month", "==", month),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Budget));
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Budget);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "budgets");
       return [];
@@ -351,26 +411,28 @@ export async function getBudgets(userId: string, month: string): Promise<Budget[
   });
 }
 
-export async function setBudget(budget: Omit<Budget, "id" | "created_at">): Promise<void> {
+export async function setBudget(
+  budget: Omit<Budget, "id" | "created_at">,
+): Promise<void> {
   try {
     const hhId = await getHhId(budget.user_id);
     const budgetData = {
       ...budget,
-      ...(hhId ? { household_id: hhId } : {})
+      ...(hhId ? { household_id: hhId } : {}),
     };
-    
+
     const q = query(
       collection(db, "budgets"),
       where(hhId ? "household_id" : "user_id", "==", hhId || budget.user_id),
       where("category_id", "==", budget.category_id),
-      where("month", "==", budget.month)
+      where("month", "==", budget.month),
     );
     const snapshot = await getDocs(q);
-    
+
     if (snapshot.empty) {
       await addDoc(collection(db, "budgets"), {
         ...budgetData,
-        created_at: Timestamp.now()
+        created_at: Timestamp.now(),
       });
     } else {
       const docRef = doc(db, "budgets", snapshot.docs[0].id);
@@ -382,23 +444,27 @@ export async function setBudget(budget: Omit<Budget, "id" | "created_at">): Prom
   }
 }
 
-export async function cloneBudgets(userId: string, fromMonth: string, toMonth: string): Promise<void> {
+export async function cloneBudgets(
+  userId: string,
+  fromMonth: string,
+  toMonth: string,
+): Promise<void> {
   try {
     const hhId = await getHhId(userId);
     const q = query(
       collection(db, "budgets"),
       where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-      where("month", "==", fromMonth)
+      where("month", "==", fromMonth),
     );
     const snapshot = await getDocs(q);
-    const fromBudgets = snapshot.docs.map(d => d.data() as Budget);
+    const fromBudgets = snapshot.docs.map((d) => d.data() as Budget);
 
     for (const b of fromBudgets) {
       await setBudget({
         user_id: userId,
         category_id: b.category_id,
         month: toMonth,
-        limit_amount: b.limit_amount
+        limit_amount: b.limit_amount,
       });
     }
     clearCache("budgets");
@@ -408,16 +474,20 @@ export async function cloneBudgets(userId: string, fromMonth: string, toMonth: s
 }
 
 // --- Recurring Rules ---
-export async function getRecurringRules(userId: string): Promise<RecurringRule[]> {
+export async function getRecurringRules(
+  userId: string,
+): Promise<RecurringRule[]> {
   return cachedFetch(`recurring_${userId}`, async () => {
     try {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "recurring_rules"),
-        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as RecurringRule)).sort((a, b) => a.next_due_date.localeCompare(b.next_due_date));
+      return snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as RecurringRule)
+        .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date));
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "recurring_rules");
       return [];
@@ -425,13 +495,15 @@ export async function getRecurringRules(userId: string): Promise<RecurringRule[]
   });
 }
 
-export async function addRecurringRule(rule: Omit<RecurringRule, "id" | "created_at">): Promise<string> {
+export async function addRecurringRule(
+  rule: Omit<RecurringRule, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(rule.user_id);
     const docRef = await addDoc(collection(db, "recurring_rules"), {
       ...rule,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     });
     clearCache("recurring");
     return docRef.id;
@@ -441,7 +513,10 @@ export async function addRecurringRule(rule: Omit<RecurringRule, "id" | "created
   }
 }
 
-export async function updateRecurringRule(id: string, updates: Partial<RecurringRule>): Promise<void> {
+export async function updateRecurringRule(
+  id: string,
+  updates: Partial<RecurringRule>,
+): Promise<void> {
   try {
     const docRef = doc(db, "recurring_rules", id);
     await updateDoc(docRef, updates);
@@ -465,19 +540,19 @@ export async function processRecurringRules(userId: string): Promise<number> {
   try {
     const hhId = await getHhId(userId);
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    
+
     const q = query(
       collection(db, "recurring_rules"),
       where(hhId ? "household_id" : "user_id", "==", hhId || userId),
       where("active", "==", true),
-      where("next_due_date", "<=", today)
+      where("next_due_date", "<=", today),
     );
     const snapshot = await getDocs(q);
-    
+
     let processedCount = 0;
     for (const document of snapshot.docs) {
       const rule = { id: document.id, ...document.data() } as RecurringRule;
-      
+
       // Create transaction
       await addTransaction({
         user_id: userId,
@@ -486,9 +561,9 @@ export async function processRecurringRules(userId: string): Promise<number> {
         date: rule.next_due_date,
         note: rule.label,
         payment_mode: "UPI",
-        source: "recurring"
+        source: "recurring",
       });
-      
+
       // Calculate next due date
       const currentDue = new Date(rule.next_due_date);
       if (rule.frequency === "monthly") {
@@ -499,12 +574,12 @@ export async function processRecurringRules(userId: string): Promise<number> {
         currentDue.setFullYear(currentDue.getFullYear() + 1);
       }
       const nextDueDateStr = currentDue.toISOString().split("T")[0];
-      
+
       // Update rule
       await updateRecurringRule(rule.id!, { next_due_date: nextDueDateStr });
       processedCount++;
     }
-    
+
     if (processedCount > 0) {
       clearCache("recurring");
       clearCache("transactions");
@@ -523,10 +598,10 @@ export async function getLoans(userId: string): Promise<Loan[]> {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "loans"),
-        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Loan));
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Loan);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "loans");
       return [];
@@ -534,13 +609,15 @@ export async function getLoans(userId: string): Promise<Loan[]> {
   });
 }
 
-export async function addLoan(loan: Omit<Loan, "id" | "created_at">): Promise<string> {
+export async function addLoan(
+  loan: Omit<Loan, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(loan.user_id);
     const docRef = await addDoc(collection(db, "loans"), {
       ...loan,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     });
     clearCache("loans");
     return docRef.id;
@@ -550,17 +627,22 @@ export async function addLoan(loan: Omit<Loan, "id" | "created_at">): Promise<st
   }
 }
 
-export async function getLoanSchedule(loanId: string, userId: string): Promise<LoanSchedule[]> {
+export async function getLoanSchedule(
+  loanId: string,
+  userId: string,
+): Promise<LoanSchedule[]> {
   return cachedFetch(`loanschedule_${loanId}`, async () => {
     try {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "loan_schedules"),
         where(hhId ? "household_id" : "user_id", "==", hhId || userId),
-        where("loan_id", "==", loanId)
+        where("loan_id", "==", loanId),
       );
       const snapshot = await getDocs(q);
-      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LoanSchedule));
+      const items = snapshot.docs.map(
+        (d) => ({ id: d.id, ...d.data() }) as LoanSchedule,
+      );
       return items.sort((a, b) => a.month_number - b.month_number);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "loan_schedules");
@@ -569,15 +651,17 @@ export async function getLoanSchedule(loanId: string, userId: string): Promise<L
   });
 }
 
-export async function saveLoanSchedule(schedule: LoanSchedule[]): Promise<void> {
+export async function saveLoanSchedule(
+  schedule: LoanSchedule[],
+): Promise<void> {
   if (schedule.length === 0) return;
   try {
     const hhId = await getHhId(schedule[0].user_id);
-    const enrichedSchedule = schedule.map(s => ({
+    const enrichedSchedule = schedule.map((s) => ({
       ...s,
-      ...(hhId ? { household_id: hhId } : {})
+      ...(hhId ? { household_id: hhId } : {}),
     }));
-    
+
     for (let i = 0; i < enrichedSchedule.length; i += 400) {
       const chunk = enrichedSchedule.slice(i, i + 400);
       const batch = writeBatch(db);
@@ -593,16 +677,19 @@ export async function saveLoanSchedule(schedule: LoanSchedule[]): Promise<void> 
   }
 }
 
-export async function clearLoanSchedule(loanId: string, userId: string): Promise<void> {
+export async function clearLoanSchedule(
+  loanId: string,
+  userId: string,
+): Promise<void> {
   try {
     const hhId = await getHhId(userId);
     const q = query(
       collection(db, "loan_schedules"),
       where("loan_id", "==", loanId),
-      where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+      where(hhId ? "household_id" : "user_id", "==", hhId || userId),
     );
     const snapshot = await getDocs(q);
-    
+
     for (let i = 0; i < snapshot.docs.length; i += 400) {
       const chunk = snapshot.docs.slice(i, i + 400);
       const batch = writeBatch(db);
@@ -624,10 +711,10 @@ export async function getGoals(userId: string): Promise<Goal[]> {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "goals"),
-        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
+      return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Goal);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "goals");
       return [];
@@ -635,13 +722,15 @@ export async function getGoals(userId: string): Promise<Goal[]> {
   });
 }
 
-export async function addGoal(goal: Omit<Goal, "id" | "created_at">): Promise<string> {
+export async function addGoal(
+  goal: Omit<Goal, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(goal.user_id);
     const docRef = await addDoc(collection(db, "goals"), {
       ...goal,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     });
     clearCache("goals");
     return docRef.id;
@@ -651,7 +740,10 @@ export async function addGoal(goal: Omit<Goal, "id" | "created_at">): Promise<st
   }
 }
 
-export async function updateGoal(id: string, updates: Partial<Goal>): Promise<void> {
+export async function updateGoal(
+  id: string,
+  updates: Partial<Goal>,
+): Promise<void> {
   try {
     const docRef = doc(db, "goals", id);
     await updateDoc(docRef, updates);
@@ -672,16 +764,20 @@ export async function deleteGoal(id: string): Promise<void> {
 }
 
 // --- Tax Calculations ---
-export async function getTaxCalculations(userId: string): Promise<TaxCalculation[]> {
+export async function getTaxCalculations(
+  userId: string,
+): Promise<TaxCalculation[]> {
   return cachedFetch(`tax_${userId}`, async () => {
     try {
       const hhId = await getHhId(userId);
       const q = query(
         collection(db, "tax_calculations"),
-        where(hhId ? "household_id" : "user_id", "==", hhId || userId)
+        where(hhId ? "household_id" : "user_id", "==", hhId || userId),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TaxCalculation));
+      return snapshot.docs.map(
+        (d) => ({ id: d.id, ...d.data() }) as TaxCalculation,
+      );
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, "tax_calculations");
       return [];
@@ -689,13 +785,15 @@ export async function getTaxCalculations(userId: string): Promise<TaxCalculation
   });
 }
 
-export async function saveTaxCalculation(taxCalc: Omit<TaxCalculation, "id" | "created_at">): Promise<string> {
+export async function saveTaxCalculation(
+  taxCalc: Omit<TaxCalculation, "id" | "created_at">,
+): Promise<string> {
   try {
     const hhId = await getHhId(taxCalc.user_id);
     const payload = {
       ...taxCalc,
       ...(hhId ? { household_id: hhId } : {}),
-      created_at: Timestamp.now()
+      created_at: Timestamp.now(),
     };
     const docRef = await addDoc(collection(db, "tax_calculations"), payload);
     clearCache("tax");

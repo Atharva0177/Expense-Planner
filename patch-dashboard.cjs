@@ -1,22 +1,22 @@
-const fs = require('fs');
-let code = fs.readFileSync('src/pages/Dashboard.tsx', 'utf8');
+const fs = require("fs");
+let code = fs.readFileSync("src/pages/Dashboard.tsx", "utf8");
 
 // Add imports
 code = code.replace(
   'import { ReportSection } from "../components/ReportSection";',
-  'import { ReportSection } from "../components/ReportSection";\nimport { HouseholdSettings } from "../components/HouseholdSettings";\nimport { InvestmentSection } from "../components/InvestmentSection";'
+  'import { ReportSection } from "../components/ReportSection";\nimport { HouseholdSettings } from "../components/HouseholdSettings";\nimport { InvestmentSection } from "../components/InvestmentSection";',
 );
 
 // Add state to activeTab
 code = code.replace(
   'const [activeTab, setActiveTab] = useState<"overview" | "income" | "expense" | "budgets" | "recurring" | "loans" | "goals" | "taxes" | "reports">("overview");',
-  'const [activeTab, setActiveTab] = useState<"overview" | "income" | "expense" | "budgets" | "recurring" | "loans" | "goals" | "taxes" | "reports" | "household" | "investments">("overview");'
+  'const [activeTab, setActiveTab] = useState<"overview" | "income" | "expense" | "budgets" | "recurring" | "loans" | "goals" | "taxes" | "reports" | "household" | "investments">("overview");',
 );
 
 // Destructure householdMember
 code = code.replace(
-  'const { user } = useAuth();',
-  'const { user, householdMember } = useAuth();\n  const isDependent = householdMember?.role === "dependent";'
+  "const { user } = useAuth();",
+  'const { user, householdMember } = useAuth();\n  const isDependent = householdMember?.role === "dependent";',
 );
 
 // Add tab buttons logic
@@ -72,11 +72,20 @@ const investmentButton = `
           </button>
           )}
 `;
-code = code.replace('{/* Navigation Tabs */}', '{/* Navigation Tabs */}\n' + investmentButton);
+code = code.replace(
+  "{/* Navigation Tabs */}",
+  "{/* Navigation Tabs */}\n" + investmentButton,
+);
 
 // Hide restricted tabs for dependents
-code = code.replace(/<button[^>]*onClick=\{\(\) => setActiveTab\("income"\)\}[^>]*>[\s\S]*?<\/button>/, '{!isDependent && $&}');
-code = code.replace(/<button[^>]*onClick=\{\(\) => setActiveTab\("taxes"\)\}[^>]*>[\s\S]*?<\/button>/, '{!isDependent && $&}');
+code = code.replace(
+  /<button[^>]*onClick=\{\(\) => setActiveTab\("income"\)\}[^>]*>[\s\S]*?<\/button>/,
+  "{!isDependent && $&}",
+);
+code = code.replace(
+  /<button[^>]*onClick=\{\(\) => setActiveTab\("taxes"\)\}[^>]*>[\s\S]*?<\/button>/,
+  "{!isDependent && $&}",
+);
 
 // Render new sections
 const sectionRepl = `
@@ -84,6 +93,9 @@ const sectionRepl = `
           {activeTab === "household" && <HouseholdSettings />}
           {activeTab === "investments" && <InvestmentSection />}
 `;
-code = code.replace('{activeTab === "overview" && <OverviewSection currentMonth={currentMonth} />}', sectionRepl);
+code = code.replace(
+  '{activeTab === "overview" && <OverviewSection currentMonth={currentMonth} />}',
+  sectionRepl,
+);
 
-fs.writeFileSync('src/pages/Dashboard.tsx', code);
+fs.writeFileSync("src/pages/Dashboard.tsx", code);

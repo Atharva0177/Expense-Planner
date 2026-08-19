@@ -1,37 +1,39 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { 
-  createHousehold, 
-  createInvite, 
-  checkAndAcceptInvite, 
-  getHouseholdMembers, 
-  updateMemberRole, 
-  updateHouseholdName, 
-  leaveHousehold 
+import {
+  createHousehold,
+  createInvite,
+  checkAndAcceptInvite,
+  getHouseholdMembers,
+  updateMemberRole,
+  updateHouseholdName,
+  leaveHousehold,
 } from "../lib/db_household";
 import { HouseholdMember } from "../types";
-import { 
-  Users, 
-  UserPlus, 
-  KeyRound, 
-  Mail, 
-  CheckCircle2, 
-  Crown, 
-  PlusCircle, 
-  Edit3, 
-  Copy, 
-  Check, 
+import {
+  Users,
+  UserPlus,
+  KeyRound,
+  Mail,
+  CheckCircle2,
+  Crown,
+  PlusCircle,
+  Edit3,
+  Copy,
+  Check,
   ArrowRight,
   LogOut,
   Sparkles,
   Home,
-  Tag
+  Tag,
 } from "lucide-react";
 
 export function HouseholdSettings() {
   const { user, household, householdMember, refreshHousehold } = useAuth();
   const [members, setMembers] = useState<HouseholdMember[]>([]);
-  const [activeSubTab, setActiveSubTab] = useState<"create" | "join">(household ? "create" : "create");
+  const [activeSubTab, setActiveSubTab] = useState<"create" | "join">(
+    household ? "create" : "create",
+  );
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(household?.name || "");
@@ -42,7 +44,10 @@ export function HouseholdSettings() {
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     if (household) {
@@ -58,16 +63,29 @@ export function HouseholdSettings() {
     setMessage(null);
     try {
       const email = user.email || `user_${user.uid}@example.com`;
-      const id = await createHousehold(user.uid, newHouseholdName.trim(), email);
+      const id = await createHousehold(
+        user.uid,
+        newHouseholdName.trim(),
+        email,
+      );
       if (id) {
-        setMessage({ type: "success", text: `Household "${newHouseholdName.trim()}" created successfully!` });
+        setMessage({
+          type: "success",
+          text: `Household "${newHouseholdName.trim()}" created successfully!`,
+        });
         setNewHouseholdName("");
         await refreshHousehold();
       } else {
-        setMessage({ type: "error", text: "Could not create household. Please try again." });
+        setMessage({
+          type: "error",
+          text: "Could not create household. Please try again.",
+        });
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to create household" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to create household",
+      });
     }
     setLoading(false);
   };
@@ -80,33 +98,58 @@ export function HouseholdSettings() {
     try {
       const ok = await updateHouseholdName(household.id!, editNameValue.trim());
       if (ok) {
-        setMessage({ type: "success", text: "Household name updated successfully!" });
+        setMessage({
+          type: "success",
+          text: "Household name updated successfully!",
+        });
         setIsEditingName(false);
         await refreshHousehold();
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to update name" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to update name",
+      });
     }
     setLoading(false);
   };
 
   const handleGenerateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!household || householdMember?.role !== "primary" || !inviteEmail.trim()) return;
+    if (
+      !household ||
+      householdMember?.role !== "primary" ||
+      !inviteEmail.trim()
+    )
+      return;
     setLoading(true);
     setMessage(null);
     try {
-      const effectiveRole = inviteRole === "other" ? (customInviteRole.trim() || "other") : inviteRole;
-      const code = await createInvite(household.id!, inviteEmail.trim(), effectiveRole, inviteRole === "other" ? customInviteRole.trim() : undefined);
+      const effectiveRole =
+        inviteRole === "other"
+          ? customInviteRole.trim() || "other"
+          : inviteRole;
+      const code = await createInvite(
+        household.id!,
+        inviteEmail.trim(),
+        effectiveRole,
+        inviteRole === "other" ? customInviteRole.trim() : undefined,
+      );
       setGeneratedCode(code);
       setInviteEmail("");
       setCustomInviteRole("");
       if (inviteRole === "other") {
         setInviteRole("spouse");
       }
-      setMessage({ type: "success", text: "Invite code generated! Share it with your family member." });
+      setMessage({
+        type: "success",
+        text: "Invite code generated! Share it with your family member.",
+      });
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to generate invite code" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to generate invite code",
+      });
     }
     setLoading(false);
   };
@@ -117,7 +160,11 @@ export function HouseholdSettings() {
     setLoading(true);
     setMessage(null);
     try {
-      const success = await checkAndAcceptInvite(user.uid, user.email || "", inviteCode.trim());
+      const success = await checkAndAcceptInvite(
+        user.uid,
+        user.email || "",
+        inviteCode.trim(),
+      );
       if (success) {
         setMessage({ type: "success", text: "Joined household successfully!" });
         setInviteCode("");
@@ -126,7 +173,10 @@ export function HouseholdSettings() {
         setMessage({ type: "error", text: "Invalid or expired invite code." });
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to join household" });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to join household",
+      });
     }
     setLoading(false);
   };
@@ -138,20 +188,32 @@ export function HouseholdSettings() {
     try {
       const success = await updateMemberRole(memberId, "primary");
       if (success) {
-        setMessage({ type: "success", text: "Member promoted to Primary successfully!" });
+        setMessage({
+          type: "success",
+          text: "Member promoted to Primary successfully!",
+        });
         const updatedMembers = await getHouseholdMembers(household.id!);
         setMembers(updatedMembers);
       } else {
         setMessage({ type: "error", text: "Failed to promote member." });
       }
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Failed to promote member." });
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to promote member.",
+      });
     }
     setLoading(false);
   };
 
   const handleLeaveHousehold = async () => {
-    if (!user || !window.confirm("Are you sure you want to leave this household? You can create or join another anytime.")) return;
+    if (
+      !user ||
+      !window.confirm(
+        "Are you sure you want to leave this household? You can create or join another anytime.",
+      )
+    )
+      return;
     setLoading(true);
     setMessage(null);
     try {
@@ -159,7 +221,10 @@ export function HouseholdSettings() {
       setMessage({ type: "success", text: "You have left the household." });
       await refreshHousehold();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Error leaving household" });
+      setMessage({
+        type: "error",
+        text: err.message || "Error leaving household",
+      });
     }
     setLoading(false);
   };
@@ -178,7 +243,9 @@ export function HouseholdSettings() {
       {/* Section Header */}
       <div className="border-b-2 border-[#1A1A1A] dark:border-[#383838] pb-3 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-serif italic tracking-tight text-[#1A1A1A] dark:text-[#F0ECE1]">Family & Household</h2>
+          <h2 className="text-2xl sm:text-3xl font-serif italic tracking-tight text-[#1A1A1A] dark:text-[#F0ECE1]">
+            Family & Household
+          </h2>
           <p className="text-[10px] uppercase font-mono tracking-widest text-[#666] dark:text-[#A0A0A0] mt-0.5">
             Synchronized tracking, joint budgets & member permissions
           </p>
@@ -193,15 +260,20 @@ export function HouseholdSettings() {
       </div>
 
       {message && (
-        <div 
+        <div
           className={`p-3.5 border ${
-            message.type === "success" 
-              ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/40 text-[#2A4B3A] dark:text-emerald-300" 
+            message.type === "success"
+              ? "border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/40 text-[#2A4B3A] dark:text-emerald-300"
               : "border-red-900 dark:border-rose-500 bg-red-50 dark:bg-rose-950/40 text-red-900 dark:text-rose-300"
           } text-xs font-mono font-bold tracking-wide flex items-center justify-between`}
         >
           <span>{message.text}</span>
-          <button onClick={() => setMessage(null)} className="text-xs uppercase hover:underline ml-3">✕</button>
+          <button
+            onClick={() => setMessage(null)}
+            className="text-xs uppercase hover:underline ml-3"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -213,23 +285,26 @@ export function HouseholdSettings() {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 border-b-2 border-[#1A1A1A] dark:border-[#383838] pb-4 gap-3">
               <div>
                 {isEditingName ? (
-                  <form onSubmit={handleUpdateName} className="flex items-center gap-2">
-                    <input 
-                      type="text" 
+                  <form
+                    onSubmit={handleUpdateName}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      type="text"
                       value={editNameValue}
-                      onChange={e => setEditNameValue(e.target.value)}
+                      onChange={(e) => setEditNameValue(e.target.value)}
                       className="px-2.5 py-1 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-serif italic text-lg sm:text-xl font-bold focus:outline-none"
                       required
                     />
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       disabled={loading}
                       className="bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-3 py-1 text-[10px] font-bold uppercase tracking-wider hover:bg-gray-800 dark:hover:bg-gray-200"
                     >
                       Save
                     </button>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsEditingName(false)}
                       className="border border-[#1A1A1A] dark:border-[#444] px-2.5 py-1 text-[10px] uppercase font-mono text-[#1A1A1A] dark:text-[#F0ECE1]"
                     >
@@ -243,7 +318,7 @@ export function HouseholdSettings() {
                       {household.name}
                     </h3>
                     {householdMember?.role === "primary" && (
-                      <button 
+                      <button
                         onClick={() => setIsEditingName(true)}
                         title="Rename Household"
                         className="p-1 text-[#666] dark:text-[#A0A0A0] hover:text-[#1A1A1A] dark:hover:text-[#F0ECE1] transition-colors"
@@ -254,7 +329,10 @@ export function HouseholdSettings() {
                   </div>
                 )}
                 <p className="text-[10px] font-mono text-[#666] dark:text-[#A0A0A0] uppercase mt-1">
-                  Your Role: <strong className="text-[#1A1A1A] dark:text-[#F0ECE1] uppercase">{householdMember?.role || 'member'}</strong>
+                  Your Role:{" "}
+                  <strong className="text-[#1A1A1A] dark:text-[#F0ECE1] uppercase">
+                    {householdMember?.role || "member"}
+                  </strong>
                 </p>
               </div>
 
@@ -280,11 +358,16 @@ export function HouseholdSettings() {
               </div>
 
               <div className="space-y-2.5">
-                {members.map(m => (
-                  <div key={m.id} className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-[#1A1A1A] dark:border-[#383838] bg-[#FCFAF7] dark:bg-[#242424] gap-2">
+                {members.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex flex-col sm:flex-row justify-between sm:items-center p-3 border border-[#1A1A1A] dark:border-[#383838] bg-[#FCFAF7] dark:bg-[#242424] gap-2"
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Mail className="w-3.5 h-3.5 text-[#666] dark:text-[#A0A0A0] shrink-0" />
-                      <span className="font-mono text-xs font-bold text-[#1A1A1A] dark:text-[#F0ECE1] truncate">{m.email}</span>
+                      <span className="font-mono text-xs font-bold text-[#1A1A1A] dark:text-[#F0ECE1] truncate">
+                        {m.email}
+                      </span>
                       {m.user_id === user.uid && (
                         <span className="text-[9px] font-mono uppercase bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-1.5 py-0.2 rounded-none">
                           You
@@ -295,16 +378,17 @@ export function HouseholdSettings() {
                       <span className="uppercase tracking-widest text-[9px] font-mono bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] px-2 py-0.5 border border-[#1A1A1A] dark:border-[#383838] font-bold">
                         {m.role}
                       </span>
-                      {householdMember?.role === "primary" && m.role !== "primary" && (
-                        <button 
-                          onClick={() => handlePromoteToPrimary(m.id!)}
-                          disabled={loading}
-                          className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 ml-2 disabled:opacity-50"
-                        >
-                          <Crown className="w-3 h-3" />
-                          <span>Make Primary</span>
-                        </button>
-                      )}
+                      {householdMember?.role === "primary" &&
+                        m.role !== "primary" && (
+                          <button
+                            onClick={() => handlePromoteToPrimary(m.id!)}
+                            disabled={loading}
+                            className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 ml-2 disabled:opacity-50"
+                          >
+                            <Crown className="w-3 h-3" />
+                            <span>Make Primary</span>
+                          </button>
+                        )}
                     </div>
                   </div>
                 ))}
@@ -319,7 +403,8 @@ export function HouseholdSettings() {
                   <span>Invite Family Member</span>
                 </h4>
                 <p className="text-xs text-[#555] dark:text-[#A0A0A0] mb-3">
-                  Generate a 6-digit sync code to add your spouse, partner, or dependent to this household account.
+                  Generate a 6-digit sync code to add your spouse, partner, or
+                  dependent to this household account.
                 </p>
                 <form onSubmit={handleGenerateInvite} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
@@ -327,33 +412,53 @@ export function HouseholdSettings() {
                       <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                         Member Email
                       </label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         placeholder="spouse@family.com"
                         value={inviteEmail}
-                        onChange={e => setInviteEmail(e.target.value)}
+                        onChange={(e) => setInviteEmail(e.target.value)}
                         className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs focus:outline-none focus:border-[2px] dark:focus:border-white"
-                        required 
+                        required
                       />
                     </div>
                     <div className="sm:col-span-3">
                       <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                         Role & Permissions
                       </label>
-                      <select 
+                      <select
                         value={inviteRole}
-                        onChange={e => setInviteRole(e.target.value)}
+                        onChange={(e) => setInviteRole(e.target.value)}
                         className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs uppercase focus:outline-none focus:border-[2px] dark:focus:border-white"
                       >
-                        <option value="spouse" className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]">Spouse (Adult)</option>
-                        <option value="primary" className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]">Co-Primary / Admin</option>
-                        <option value="dependent" className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]">Child / Dependent</option>
-                        <option value="other" className="bg-white dark:bg-[#1A1A1A] text-amber-700 dark:text-amber-400 font-bold">+ Other (Custom Role)...</option>
+                        <option
+                          value="spouse"
+                          className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]"
+                        >
+                          Spouse (Adult)
+                        </option>
+                        <option
+                          value="primary"
+                          className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]"
+                        >
+                          Co-Primary / Admin
+                        </option>
+                        <option
+                          value="dependent"
+                          className="bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1]"
+                        >
+                          Child / Dependent
+                        </option>
+                        <option
+                          value="other"
+                          className="bg-white dark:bg-[#1A1A1A] text-amber-700 dark:text-amber-400 font-bold"
+                        >
+                          + Other (Custom Role)...
+                        </option>
                       </select>
                     </div>
                     <div className="sm:col-span-3">
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={loading}
                         className="w-full bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-4 py-2.5 font-bold uppercase tracking-widest text-[10px] hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors touch-manipulation min-h-[38px] shadow-[2px_2px_0px_#777] dark:shadow-[2px_2px_0px_#000]"
                       >
@@ -369,13 +474,13 @@ export function HouseholdSettings() {
                         <Tag className="w-3 h-3" />
                         <span>Specify Role / Relationship Description *</span>
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         required
                         placeholder="e.g. Roommate, Parent, Sibling, Accountant / Financial Planner, Business Partner"
-                        value={customInviteRole} 
-                        onChange={e => setCustomInviteRole(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#555] bg-white dark:bg-[#181818] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold" 
+                        value={customInviteRole}
+                        onChange={(e) => setCustomInviteRole(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#555] bg-white dark:bg-[#181818] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold"
                       />
                     </div>
                   )}
@@ -385,7 +490,9 @@ export function HouseholdSettings() {
                   <div className="mt-4 p-4 border-2 border-[#2A4B3A] dark:border-emerald-500 bg-[#F0F5F2] dark:bg-emerald-950/40 text-[#2A4B3A] dark:text-emerald-300 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-xs font-mono font-bold">
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>Invite Code generated! Share with your family member:</span>
+                      <span>
+                        Invite Code generated! Share with your family member:
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-base font-bold bg-white dark:bg-[#1A1A1A] border border-[#2A4B3A] dark:border-emerald-500 px-3.5 py-1 tracking-widest text-[#2A4B3A] dark:text-emerald-300">
@@ -397,7 +504,11 @@ export function HouseholdSettings() {
                         className="p-1.5 bg-[#2A4B3A] dark:bg-emerald-600 text-white hover:bg-[#1E362A] dark:hover:bg-emerald-700 transition-colors"
                         title="Copy Code"
                       >
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -421,7 +532,9 @@ export function HouseholdSettings() {
                 type="button"
                 onClick={() => setActiveSubTab("create")}
                 className={`px-3.5 py-1.5 text-[10px] uppercase font-mono font-bold border border-[#1A1A1A] dark:border-[#444] transition-colors ${
-                  activeSubTab === "create" ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]" : "bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#2c2c2c]"
+                  activeSubTab === "create"
+                    ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]"
+                    : "bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#2c2c2c]"
                 }`}
               >
                 + Create New Family
@@ -430,7 +543,9 @@ export function HouseholdSettings() {
                 type="button"
                 onClick={() => setActiveSubTab("join")}
                 className={`px-3.5 py-1.5 text-[10px] uppercase font-mono font-bold border border-[#1A1A1A] dark:border-[#444] transition-colors ${
-                  activeSubTab === "join" ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]" : "bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#2c2c2c]"
+                  activeSubTab === "join"
+                    ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]"
+                    : "bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#2c2c2c]"
                 }`}
               >
                 Join with Invite Code
@@ -438,22 +553,25 @@ export function HouseholdSettings() {
             </div>
 
             {activeSubTab === "create" ? (
-              <form onSubmit={handleCreateHousehold} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+              <form
+                onSubmit={handleCreateHousehold}
+                className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end"
+              >
                 <div className="flex-grow">
                   <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                     New Family / Household Name
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. The Sharma Family, Mumbai Residence"
                     value={newHouseholdName}
-                    onChange={e => setNewHouseholdName(e.target.value)}
+                    onChange={(e) => setNewHouseholdName(e.target.value)}
                     className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs focus:outline-none focus:border-[2px] dark:focus:border-white"
-                    required 
+                    required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={loading}
                   className="bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-5 py-2.5 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors touch-manipulation min-h-[38px] shrink-0 shadow-[2px_2px_0px_#777] dark:shadow-[2px_2px_0px_#000]"
                 >
@@ -461,22 +579,27 @@ export function HouseholdSettings() {
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleAcceptInvite} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+              <form
+                onSubmit={handleAcceptInvite}
+                className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end"
+              >
                 <div className="flex-grow">
                   <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                     6-Digit Invite Code
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. AB12CD"
                     value={inviteCode}
-                    onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setInviteCode(e.target.value.toUpperCase())
+                    }
                     className="w-full px-3 py-2 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs uppercase focus:outline-none focus:border-[2px] dark:focus:border-white"
-                    required 
+                    required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={loading}
                   className="bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-5 py-2.5 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors touch-manipulation min-h-[38px] shrink-0 shadow-[2px_2px_0px_#777] dark:shadow-[2px_2px_0px_#000]"
                 >
@@ -494,7 +617,8 @@ export function HouseholdSettings() {
               Choose How to Set Up Your Family Space
             </h3>
             <p className="text-xs font-mono text-[#666] dark:text-[#A0A0A0] mt-1 max-w-md mx-auto">
-              Create a brand new family finance account or join your partner's existing household using an invite code.
+              Create a brand new family finance account or join your partner's
+              existing household using an invite code.
             </p>
           </div>
 
@@ -504,7 +628,9 @@ export function HouseholdSettings() {
               type="button"
               onClick={() => setActiveSubTab("create")}
               className={`flex items-center gap-2 px-5 py-2.5 text-xs uppercase font-bold tracking-wider border-2 border-[#1A1A1A] dark:border-[#383838] transition-all shadow-[3px_3px_0px_#1A1A1A] dark:shadow-[3px_3px_0px_#000] ${
-                activeSubTab === "create" ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]" : "bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#242424]"
+                activeSubTab === "create"
+                  ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]"
+                  : "bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#242424]"
               }`}
             >
               <PlusCircle className="w-4 h-4" />
@@ -514,7 +640,9 @@ export function HouseholdSettings() {
               type="button"
               onClick={() => setActiveSubTab("join")}
               className={`flex items-center gap-2 px-5 py-2.5 text-xs uppercase font-bold tracking-wider border-2 border-[#1A1A1A] dark:border-[#383838] transition-all shadow-[3px_3px_0px_#1A1A1A] dark:shadow-[3px_3px_0px_#000] ${
-                activeSubTab === "join" ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]" : "bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#242424]"
+                activeSubTab === "join"
+                  ? "bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212]"
+                  : "bg-white dark:bg-[#1A1A1A] text-[#1A1A1A] dark:text-[#F0ECE1] hover:bg-gray-100 dark:hover:bg-[#242424]"
               }`}
             >
               <KeyRound className="w-4 h-4" />
@@ -529,24 +657,25 @@ export function HouseholdSettings() {
                 <span>Create a New Family Household</span>
               </h4>
               <p className="text-xs text-[#555] dark:text-[#A0A0A0] mb-4">
-                You will be set as the Primary Admin. You can invite your spouse, partner, or dependents anytime.
+                You will be set as the Primary Admin. You can invite your
+                spouse, partner, or dependents anytime.
               </p>
               <form onSubmit={handleCreateHousehold} className="space-y-4">
                 <div>
                   <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                     Family Name
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. Mandavkar Family, Mumbai Residence"
                     value={newHouseholdName}
-                    onChange={e => setNewHouseholdName(e.target.value)}
+                    onChange={(e) => setNewHouseholdName(e.target.value)}
                     className="w-full px-3.5 py-2.5 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-xs focus:outline-none focus:border-[2px] dark:focus:border-white"
-                    required 
+                    required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={loading}
                   className="w-full bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] py-3 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors shadow-[3px_3px_0px_#888] dark:shadow-[3px_3px_0px_#000]"
                 >
@@ -561,24 +690,27 @@ export function HouseholdSettings() {
                 <span>Join an Existing Household</span>
               </h4>
               <p className="text-xs text-[#555] dark:text-[#A0A0A0] mb-4">
-                Ask your family admin or spouse for their 6-character invite code generated in their Family settings.
+                Ask your family admin or spouse for their 6-character invite
+                code generated in their Family settings.
               </p>
               <form onSubmit={handleAcceptInvite} className="space-y-4">
                 <div>
                   <label className="block text-[10px] uppercase font-bold tracking-widest text-[#1A1A1A] dark:text-[#E0E0E0] mb-1">
                     6-Digit Invite Code
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. AB12CD"
                     value={inviteCode}
-                    onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setInviteCode(e.target.value.toUpperCase())
+                    }
                     className="w-full px-3.5 py-2.5 border border-[#1A1A1A] dark:border-[#444] bg-[#FCFAF7] dark:bg-[#242424] text-[#1A1A1A] dark:text-[#F0ECE1] font-mono text-sm uppercase tracking-widest font-bold focus:outline-none focus:border-[2px] dark:focus:border-white"
-                    required 
+                    required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={loading}
                   className="w-full bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] py-3 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors shadow-[3px_3px_0px_#888] dark:shadow-[3px_3px_0px_#000]"
                 >
@@ -592,4 +724,3 @@ export function HouseholdSettings() {
     </div>
   );
 }
-

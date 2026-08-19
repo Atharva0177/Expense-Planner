@@ -1,10 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { 
-  initializeFirestore, 
+import {
+  initializeFirestore,
   getFirestore,
-  persistentLocalCache, 
-  persistentMultipleTabManager 
+  persistentLocalCache,
+  persistentMultipleTabManager,
 } from "firebase/firestore";
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
@@ -19,17 +19,40 @@ const fallbackConfig = {
   firestoreDatabaseId: "ai-studio-59a52c44-ee54-464b-8932-111bd2bc67b5",
 };
 
-const rawJson = (firebaseConfigJson as Record<string, string> | undefined) || {};
+const rawJson =
+  (firebaseConfigJson as Record<string, string> | undefined) || {};
 
 // Supports environment variables on external hosts like Vercel with automatic fallbacks
 const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || rawJson.apiKey || fallbackConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || rawJson.authDomain || fallbackConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || rawJson.projectId || fallbackConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || rawJson.storageBucket || fallbackConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || rawJson.messagingSenderId || fallbackConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || rawJson.appId || fallbackConfig.appId,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || rawJson.firestoreDatabaseId || fallbackConfig.firestoreDatabaseId || "(default)",
+  apiKey:
+    import.meta.env.VITE_FIREBASE_API_KEY ||
+    rawJson.apiKey ||
+    fallbackConfig.apiKey,
+  authDomain:
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
+    rawJson.authDomain ||
+    fallbackConfig.authDomain,
+  projectId:
+    import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+    rawJson.projectId ||
+    fallbackConfig.projectId,
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    rawJson.storageBucket ||
+    fallbackConfig.storageBucket,
+  messagingSenderId:
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+    rawJson.messagingSenderId ||
+    fallbackConfig.messagingSenderId,
+  appId:
+    import.meta.env.VITE_FIREBASE_APP_ID ||
+    rawJson.appId ||
+    fallbackConfig.appId,
+  firestoreDatabaseId:
+    import.meta.env.VITE_FIREBASE_DATABASE_ID ||
+    rawJson.firestoreDatabaseId ||
+    fallbackConfig.firestoreDatabaseId ||
+    "(default)",
 };
 
 export const app = getApps().length === 0 ? initializeApp(config) : getApp();
@@ -38,12 +61,16 @@ export const auth = getAuth(app);
 // Initialize Firestore with IndexedDB multi-tab persistent cache and auto long polling detection
 function initDb() {
   try {
-    return initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      }),
-      experimentalAutoDetectLongPolling: true,
-    }, config.firestoreDatabaseId);
+    return initializeFirestore(
+      app,
+      {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+        experimentalAutoDetectLongPolling: true,
+      },
+      config.firestoreDatabaseId,
+    );
   } catch {
     // If already initialized or in fallback environment
     return getFirestore(app, config.firestoreDatabaseId);
@@ -51,4 +78,3 @@ function initDb() {
 }
 
 export const db = initDb();
-
