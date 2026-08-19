@@ -1100,10 +1100,8 @@ The build output includes:
 - `dist/assets/`: hashed CSS and JS files
 - `dist/server.cjs`: Bundled Express server
 - `firebase-applet-config.json`: Firebase configuration copy
--
-
-<a id="ci-cd"></a>
-
+- 
+<a id="ci-cd"></a> 
 ## CI/CD
 
 The application uses GitHub Actions for continuous integration and deployment.
@@ -1711,7 +1709,7 @@ docker run --rm -it expense-planner sh
   - Scales well to additional financial domains
   - Makes the codebase approachable for new contributors
 
-### Decision: GitHub Actions Pipeline
+### Decision: GitHub Actions  Pipeline
 
 - **Evidence**:
   - `.github/workflows/ci-cd.yml` defines lint, test, build, security audit, deploy
@@ -1821,7 +1819,7 @@ The application can be deployed via:
 - **Vercel**: Using GitHub Actions (`vercel deploy --prebuilt`) or Vercel CLI
 - **Docker**: Using `docker compose up --build` or manual `docker run`
 - **Traditional Node.js**: Using `npm run build` then `node dist/server.cjs`
-  The pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
+  The  pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
 
 ### Is the application suitable for business use?
 
