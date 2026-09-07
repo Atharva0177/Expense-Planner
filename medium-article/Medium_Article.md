@@ -942,35 +942,46 @@ Expense Planner employs modern development practices to ensure code quality, mai
 
 Getting started with Expense Planner development is straightforward:
 
+**Environment preparation**
 ```bash
-# Environment preparation
 cp .env.example .env
 # Add GEMINI_API_KEY to .env (optional but recommended for receipt scanning)
 # Other optional vars: FIREBASE_EMULATOR_HOST (for local Firebase emulation)
+```
 
-# Dependency installation
+**Dependency installation**
+```bash
 bun install  # or npm install
 # bun is recommended for faster installation and built-in test runner
+```
 
-# Development server
+**Development server**
+```bash
 bun run dev  # or npm run dev
 # Application available at http://localhost:3000 with hot module replacement
 # Features fast refresh for React components and instant CSS updates
+```
 
-# Environment variables for enhanced development
+**Environment variables for enhanced development**
+```bash
 # REACT_APP_LOG_LEVEL=debug  # More verbose logging
 # REACT_APP_MOCK_API=true    # Use mock API instead of real Firebase (for UI-only work)
 # REACT_APP_DISABLE_RECEIPT_SCAN=true  # Skip AI processing during development
+```
 
-# Production build
+**Production build**
+```bash
 bun run build  # or npm run build
 # Outputs to dist/ directory with optimized bundles
 # Includes source maps for debugging (can be disabled for production)
+```
 
-# Production server
+**Production server**
+```bash
 bun run start  # or npm run start
 # Serves the built application from dist/ directory
 # Set NODE_ENV=production for optimizations
+```
 
 ### Code Quality Measures
 
