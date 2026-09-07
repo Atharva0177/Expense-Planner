@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .t { fill:#e8eef5; font-size:15px; font-weight:600; }
+      .s { fill:#9fb0c3; font-size:12px; }
+      .ax { stroke:#2b3a4d; stroke-width:1; }
+      .grid { stroke:#1a2431; stroke-width:1; }
+      .gl { fill:#5f7489; font-size:11px; }
+      .bar1 { fill:#4f8fd0; }
+      .bar2 { fill:#d07f4f; }
+      .val { fill:#e8eef5; font-size:13px; font-weight:600; }
+      .win { fill:#7fd4a8; font-size:13px; font-weight:700; }
+    </style>
+  </defs>
+  <rect width="1200" height="640" fill="#0b1119"/>
+
+  <text x="40" y="45" class="t" font-size="19">Old vs New Regime — the app computes both, every time</text>
+  <text x="40" y="70" class="s">Worked example from the live app: ₹12,00,000 gross income, FY 2025-26 (new) vs FY 2024-25-style old regime with §80C + §80D deductions</text>
+
+  <!-- Bar chart: total tax -->
+  <text x="40" y="120" class="t">Total tax liability</text>
+  <line x1="80" y1="500" x2="560" y2="500" class="ax"/>
+  <line x1="80" y1="140" x2="80" y2="500" class="ax"/>
+  <line x1="80" y1="420" x2="560" y2="420" class="grid"/>
+  <line x1="80" y1="340" x2="560" y2="340" class="grid"/>
+  <line x1="80" y1="260" x2="560" y2="260" class="grid"/>
+  <line x1="80" y1="180" x2="560" y2="180" class="grid"/>
+  <text x="60" y="504" class="gl" text-anchor="end">0</text>
+  <text x="60" y="424" class="gl" text-anchor="end">25k</text>
+  <text x="60" y="344" class="gl" text-anchor="end">50k</text>
+  <text x="60" y="264" class="gl" text-anchor="end">75k</text>
+  <text x="60" y="184" class="gl" text-anchor="end">100k</text>
+
+  <!-- New regime: 71,500 -> 5.96% of 12L -->
+  <rect x="140" y="271" width="130" height="229" class="bar1" rx="4"/>
+  <text x="205" y="258" text-anchor="middle" class="val">₹71,500</text>
+  <text x="205" y="520" text-anchor="middle" class="s">New regime</text>
+  <text x="205" y="540" text-anchor="middle" class="s">5.96% effective</text>
+
+  <!-- Old regime: 95,701 -> 7.98% -->
+  <rect x="360" y="233" width="130" height="267" class="bar2" rx="4"/>
+  <text x="425" y="220" text-anchor="middle" class="val">₹95,701</text>
+  <text x="425" y="520" text-anchor="middle" class="s">Old regime</text>
+  <text x="425" y="540" text-anchor="middle" class="s">7.98% effective</text>
+
+  <text x="320" y="160" text-anchor="middle" class="win">New regime saves ₹24,201</text>
+
+  <!-- New regime slab table FY25-26 -->
+  <text x="640" y="120" class="t">New regime slabs (§115BAC, FY 2025-26)</text>
+  <g class="s">
+    <rect x="640" y="140" width="520" height="34" fill="#131b26" rx="6"/>
+    <text x="655" y="162" class="s">₹0 – ₹4,00,000</text><text x="1145" y="162" class="s" text-anchor="end">Nil</text>
+    <rect x="640" y="180" width="520" height="34" fill="#101823" rx="6"/>
+    <text x="655" y="202" class="s">₹4,00,001 – ₹8,00,000</text><text x="1145" y="202" class="s" text-anchor="end">5%</text>
+    <rect x="640" y="220" width="520" height="34" fill="#131b26" rx="6"/>
+    <text x="655" y="242" class="s">₹8,00,001 – ₹12,00,000</text><text x="1145" y="242" class="s" text-anchor="end">10%</text>
+    <rect x="640" y="260" width="520" height="34" fill="#101823" rx="6"/>
+    <text x="655" y="282" class="s">₹12,00,001 – ₹16,00,000</text><text x="1145" y="282" class="s" text-anchor="end">15%</text>
+    <rect x="640" y="300" width="520" height="34" fill="#131b26" rx="6"/>
+    <text x="655" y="322" class="s">₹16,00,001 – ₹20,00,000</text><text x="1145" y="322" class="s" text-anchor="end">20%</text>
+    <rect x="640" y="340" width="520" height="34" fill="#101823" rx="6"/>
+    <text x="655" y="362" class="s">₹20,00,001 – ₹24,00,000</text><text x="1145" y="362" class="s" text-anchor="end">25%</text>
+    <rect x="640" y="380" width="520" height="34" fill="#131b26" rx="6"/>
+    <text x="655" y="402" class="s">Above ₹24,00,000</text><text x="1145" y="402" class="s" text-anchor="end">30%</text>
+  </g>
+
+  <text x="640" y="450" class="t">Engine details</text>
+  <g class="s">
+    <text x="640" y="478">• §87A rebate up to ₹7L taxable — marginal relief to ₹7,27,777</text>
+    <text x="640" y="502">• Standard deduction ₹75,000 (new) / ₹50,000 (old)</text>
+    <text x="640" y="526">• Surcharge 10/15/25/37% with marginal relief</text>
+    <text x="640" y="550">• Breakeven found by 25-iteration binary search</text>
+    <text x="640" y="574">• Capital gains: LTCG equity 12.5% over ₹1.25L, STCG 20%</text>
+    <text x="640" y="598">• Advance tax schedule: 15 / 45 / 75 / 100%</text>
+  </g>
+</svg>
