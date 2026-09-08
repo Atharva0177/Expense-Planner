@@ -3,6 +3,7 @@
 A comprehensive personal and family finance management application built with React, Express, and Firebase. Features include expense tracking, income management, budgeting, goal setting, loan tracking, investment tracking, tax calculations, and AI-powered receipt scanning.
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Technology Stack](#technology-stack)
@@ -101,6 +102,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 ## Technology Stack
 
 ### Frontend
+
 - **React 19**: JavaScript library for building user interfaces
 - **React Router DOM 7**: Declarative routing for React applications
 - **Tailwind CSS 4**: Utility-first CSS framework for rapid UI development
@@ -117,6 +119,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 - **Vite 6**: Next-generation frontend tooling for fast development and build
 
 ### Backend
+
 - **Node.js 22**: Java runtime for server-side execution
 - **Express 4**: Fast, unopinionated, minimalist web framework
 - **Dotenv**: Loads environment variables from .env file
@@ -126,6 +129,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 - **Firebase Admin SDK**: Server-side Firebase integration for privileged operations
 
 ### Development Tools
+
 - **TypeScript 5.8**: Typed superset of JavaScript that compiles to plain JavaScript
 - **Vite Plugin React**: Official Vite plugin for React
 - **Tailwind CSS Vite Plugin**: Official Tailwind CSS integration for Vite
@@ -136,6 +140,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 - **Vercel Node**: Official Vercel adapter for Node.js applications
 
 ### Database & Infrastructure
+
 - **Firebase Firestore**: NoSQL document database for real-time data storage
 - **Firebase Authentication**: Secure authentication system with multiple providers
 - **Firebase Hosting**: Static and dynamic web hosting (alternative deployment)
@@ -143,12 +148,14 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 - **Multiple Tab Manager**: Synchronizes Firestore state across browser tabs
 
 ### Build & Deployment
+
 - **Docker**: Containerization platform for consistent deployment
 - **Multi-stage Docker Build**: Optimized production images with reduced footprint
 - **Vercel**: Platform for frontend and serverless function deployment
 - **GitHub Actions**: CI/CD pipeline for automated testing, building, and deployment
 
 ### Environment Variables
+
 - **GEMINI_API_KEY**: Google Gemini AI API key for receipt scanning
 - **VITE_GEMINI_API_KEY**: Client-side fallback key for static deployments
 - **APP_URL**: Application URL for absolute links
@@ -161,6 +168,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 - **VITE_FIREBASE_DATABASE_ID**: Firebase database ID (optional)
 
 ### Dependencies Summary
+
 - **Production Dependencies**: 18 packages including React, Firebase, Express, TailwindCSS
 - **Development Dependencies**: 12 packages including TypeScript, Vite, ESBuild, Puppeteer
 
@@ -169,6 +177,7 @@ The primary purpose of Expense Planner is to simplify financial management by pr
 ### High-Level Architecture
 
 Expense Planner follows a three-tier architecture:
+
 1. **Presentation Layer**: React frontend running in the browser
 2. **Application Layer**: Express.js backend server handling API requests and business logic
 3. **Data Layer**: Firebase Firestore NoSQL database for persistent storage
@@ -235,7 +244,7 @@ Data is stored in Firebase Firestore with the following collections:
 ### Security Architecture
 
 - **Authentication**: Firebase Authentication (email/password, with support for other providers)
-- **Authorization**: 
+- **Authorization**:
   - Frontend: Protected routes check authentication state
   - Backend: API endpoints validate user identity and permissions
   - Data Level: Firestore security rules (not implemented in this version, relying on frontend/backend validation)
@@ -244,7 +253,7 @@ Data is stored in Firebase Firestore with the following collections:
   - Rate limiting prevents abuse of AI endpoints
   - Input validation on all API endpoints
   - Secure headers via Express middleware (could be enhanced)
-- **Household Isolation**: 
+- **Household Isolation**:
   - Users can belong to only one household at a time
   - Data queries are scoped to household ID when available
   - Fallback to user ID for personal data when no household exists
@@ -263,7 +272,7 @@ Data is stored in Firebase Firestore with the following collections:
 
 ### Deployment Architecture
 
-- **Development**: 
+- **Development**:
   - Frontend: Vite dev server with HMR
   - Backend: Express server with Vite middleware
   - Database: Firebase emulator or production instance
@@ -271,7 +280,7 @@ Data is stored in Firebase Firestore with the following collections:
   - Option 1: Docker container running Express server serving static frontend
   - Option 2: Vercel deployment with serverless functions for API and static asset serving
   - Database: Firebase production instance
-- **Environment Separation**: 
+- **Environment Separation**:
   - Different Firebase projects for development/staging/production (via env vars)
   - Separate configuration for API keys and endpoints
 
@@ -371,21 +380,26 @@ e:/Expense
 ### Installation Steps
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd Expense
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm ci
    ```
+
    This installs exact versions from package-lock.json for reproducible builds.
 
 3. **Configure environment variables**
+
    ```bash
    cp .env.example .env
    ```
+
    Edit `.env` to add your configuration:
    - `GEMINI_API_KEY`: Your Google Gemini API key (obtain from Google AI Studio)
    - Firebase configuration variables (optional for initial testing):
@@ -406,18 +420,22 @@ e:/Expense
    - Update the `.env` file with your Firebase configuration values
 
 5. **(Optional) Install and run Firebase emulators for local development**
+
    ```bash
    npm install -g firebase-tools
    firebase login
    firebase init emulators
    firebase emulators:start
    ```
+
    Then update your `.env` to point to the emulators (e.g., change database host to localhost).
 
 6. **Start the development server**
+
    ```bash
    npm run dev
    ```
+
    This will start both the Vite frontend dev server and the Express backend server.
 
 7. **Access the application**
@@ -452,46 +470,46 @@ Expense Planner relies on environment variables for configuration across differe
 
 ### Required Variables
 
-| Variable | Required | Purpose | Where Used | Example |
-| -------- | -------- | ------- | -------- | ------- |
-| `GEMINI_API_KEY` | Yes | Google Gemini AI API key for receipt scanning | Backend (`server.ts`) | `AIzaSyYourActualKeyHere` |
-| `APP_URL` | Yes | Base URL for the application (used for absolute links) | Frontend | `http://localhost:5173` |
-| `NODE_ENV` | No (defaults to `development`) | Application mode (development/production) | Both | `development` or `production` |
-| `PORT` | No (defaults to `3000`) | Port for the Express backend server | Backend (`server.ts`) | `3000` |
+| Variable         | Required                       | Purpose                                                | Where Used            | Example                       |
+| ---------------- | ------------------------------ | ------------------------------------------------------ | --------------------- | ----------------------------- |
+| `GEMINI_API_KEY` | Yes                            | Google Gemini AI API key for receipt scanning          | Backend (`server.ts`) | `AIzaSyYourActualKeyHere`     |
+| `APP_URL`        | Yes                            | Base URL for the application (used for absolute links) | Frontend              | `http://localhost:5173`       |
+| `NODE_ENV`       | No (defaults to `development`) | Application mode (development/production)              | Both                  | `development` or `production` |
+| `PORT`           | No (defaults to `3000`)        | Port for the Express backend server                    | Backend (`server.ts`) | `3000`                        |
 
 ### Firebase Configuration Variables (Client-Side)
 
 These variables are prefixed with `VITE_` to be exposed to the frontend via Vite. They are optional for basic functionality but required for Firebase-dependent features.
 
-| Variable | Required | Purpose | Where Used | Example |
-| -------- | -------- | ------- | -------- | ------- |
-| `VITE_FIREBASE_API_KEY` | Yes (for Firebase) | Firebase API key | Frontend (via `firebase.ts`) | `AIzaSyYourKey` |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Yes (for Firebase) | Firebase authentication domain | Frontend | `your-project.firebaseapp.com` |
-| `VITE_FIREBASE_PROJECT_ID` | Yes (for Firebase) | Firebase project ID | Frontend | `your-project-id` |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Yes (for Firebase) | Firebase storage bucket | Frontend | `your-project.appspot.com` |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Yes (for Firebase) | Firebase messaging sender ID | Frontend | `1234567890` |
-| `VITE_FIREBASE_APP_ID` | Yes (for Firebase) | Firebase application ID | Frontend | `1:1234567890:web:abcdef` |
-| `VITE_FIREBASE_DATABASE_ID` | No (defaults to `(default)`) | Firebase database ID | Frontend | `your-database-id` |
+| Variable                            | Required                     | Purpose                        | Where Used                   | Example                        |
+| ----------------------------------- | ---------------------------- | ------------------------------ | ---------------------------- | ------------------------------ |
+| `VITE_FIREBASE_API_KEY`             | Yes (for Firebase)           | Firebase API key               | Frontend (via `firebase.ts`) | `AIzaSyYourKey`                |
+| `VITE_FIREBASE_AUTH_DOMAIN`         | Yes (for Firebase)           | Firebase authentication domain | Frontend                     | `your-project.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID`          | Yes (for Firebase)           | Firebase project ID            | Frontend                     | `your-project-id`              |
+| `VITE_FIREBASE_STORAGE_BUCKET`      | Yes (for Firebase)           | Firebase storage bucket        | Frontend                     | `your-project.appspot.com`     |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Yes (for Firebase)           | Firebase messaging sender ID   | Frontend                     | `1234567890`                   |
+| `VITE_FIREBASE_APP_ID`              | Yes (for Firebase)           | Firebase application ID        | Frontend                     | `1:1234567890:web:abcdef`      |
+| `VITE_FIREBASE_DATABASE_ID`         | No (defaults to `(default)`) | Firebase database ID           | Frontend                     | `your-database-id`             |
 
 ### Development-Specific Variables
 
-| Variable | Required | Purpose | Where Used | Example |
-| -------- | -------- | ------- | -------- | ------- |
-| `DISABLE_HMR` | No | Disables Hot Module Replacement in Vite (used in AI Studio environments) | Frontend (`vite.config.ts`) | `true` |
-| `VITE_FIREBASE_EMULATOR_HOST` | No | Firebase emulator host for local development | Frontend | `localhost:8080` |
-| `FIREBASE_AUTH_EMULATOR_HOST` | No | Firebase Auth emulator host | Backend (if using Admin SDK) | `localhost:9099` |
-| `FIREBASE_FSTORE_EMULATOR_HOST` | No | Firebase Firestore emulator host | Frontend (via Firebase SDK) | `localhost:8080` |
+| Variable                        | Required | Purpose                                                                  | Where Used                   | Example          |
+| ------------------------------- | -------- | ------------------------------------------------------------------------ | ---------------------------- | ---------------- |
+| `DISABLE_HMR`                   | No       | Disables Hot Module Replacement in Vite (used in AI Studio environments) | Frontend (`vite.config.ts`)  | `true`           |
+| `VITE_FIREBASE_EMULATOR_HOST`   | No       | Firebase emulator host for local development                             | Frontend                     | `localhost:8080` |
+| `FIREBASE_AUTH_EMULATOR_HOST`   | No       | Firebase Auth emulator host                                              | Backend (if using Admin SDK) | `localhost:9099` |
+| `FIREBASE_FSTORE_EMULATOR_HOST` | No       | Firebase Firestore emulator host                                         | Frontend (via Firebase SDK)  | `localhost:8080` |
 
 ### Production Variables
 
 In production environments (Docker, Vercel, etc.), these variables are typically set via the platform's interface:
 
-| Variable | Purpose | Example |
-| -------- | ------- | ------- |
-| `GEMINI_API_KEY` | Google Gemini AI key | Set in Vercel Project Settings → Environment Variables |
-| `NODE_ENV` | Set to `production` | `production` |
-| `PORT` | Port the container listens on | `3000` |
-| Firebase `VITE_*` variables | Firebase config for production | Set via Vercel or Docker `-e` flags |
+| Variable                    | Purpose                        | Example                                                |
+| --------------------------- | ------------------------------ | ------------------------------------------------------ |
+| `GEMINI_API_KEY`            | Google Gemini AI key           | Set in Vercel Project Settings → Environment Variables |
+| `NODE_ENV`                  | Set to `production`            | `production`                                           |
+| `PORT`                      | Port the container listens on  | `3000`                                                 |
+| Firebase `VITE_*` variables | Firebase config for production | Set via Vercel or Docker `-e` flags                    |
 
 ### .env.example Reference
 
@@ -562,9 +580,11 @@ This method runs both the frontend and backend servers directly on your machine.
    - (Optional) Firebase emulator running if you want to avoid writing to production Firebase
 
 2. **Start the development servers**
+
    ```bash
    npm run dev
    ```
+
    This command runs two processes concurrently:
    - Vite development server for the frontend (default port 5173)
    - Express server for the backend (default port 3000)
@@ -839,7 +859,7 @@ The frontend follows a modular component structure:
        - `ThemeToggle.tsx`: Button to switch between light/dark themes
    - Many UI elements are composed directly using Tailwind CSS classes for flexibility
 
-3. **UI Primitives**
+5. **UI Primitives**
    - Built using Tailwind CSS utility classes
    - Common patterns:
      - Cards: `bg-white dark:bg-[#1A1A1A] border border-[#1A1A1A] dark:border-[#383838] rounded-lg shadow`
@@ -850,7 +870,7 @@ The frontend follows a modular component structure:
 ### Styling
 
 - **Framework**: Tailwind CSS v4
-- **Configuration**: 
+- **Configuration**:
   - `tailwindcss` plugin in `vite.config.ts`
   - Custom colors defined implicitly through usage
   - Dark mode: Built-in support via `dark:` variant
@@ -869,12 +889,12 @@ The frontend follows a modular component structure:
 - **Static Assets**: Located in `/assets/` directory
   - Images, icons, logos, etc.
   - Referenced in components using relative paths
-- **Icons**: 
+- **Icons**:
   - Primary icon library: `lucide-react`
   - Imported as React components for inline SVG styling
   - Example: `<LayoutDashboard className="w-4 h-4" />`
   - Allows easy size and color control via props and Tailwind
-- **Fonts**: 
+- **Fonts**:
   - Default browser fonts with Tailwind's `font-sans` and `font-serif` utilities
   - Specific fonts used:
     - `font-serif` for headings and elegant text (Expense Planner logo)
@@ -884,14 +904,14 @@ The frontend follows a modular component structure:
 ### Forms and Validation
 
 - **Form Elements**: Standard HTML inputs wrapped in labels and divs
-- **Validation**: 
+- **Validation**:
   - Primarily done in the backend/database layer
   - Frontend provides basic required field checks and format validation
   - Examples:
     - Email format in login form
     - Required fields marked with asterisk
     - Number inputs with min/max attributes
-- **Submission Handling**: 
+- **Submission Handling**:
   - Prevents default form submission
   - Gathers form data into JavaScript objects
   - Calls appropriate functions from `src/lib/db.ts` or `src/lib/firebase.ts` (though most data operations go through db.ts)
@@ -905,7 +925,7 @@ The frontend follows a modular component structure:
   - Implement household ID resolution via `getHhId`
   - Include error handling via `handleFirestoreError`
   - Return empty arrays or default values on error to prevent UI crashes
-- **Optimistic Updates**: 
+- **Optimistic Updates**:
   - Many mutation functions (add, update, delete) clear relevant caches immediately
   - This ensures UI reflects changes instantly while waiting for backend confirmation
 - **Background Prefetching**:
@@ -921,7 +941,7 @@ The frontend follows a modular component structure:
   - Form validation errors shown inline with inputs
   - API errors shown in toast-like notifications or modal dialogs
   - Loading states shown with spinners and skeleton screens
-- **Logging**: 
+- **Logging**:
   - Console warnings and errors for unexpected issues
   - Structured error objects logged to backend via `handleFirestoreError` in db.ts
 - **Recovery Mechanisms**:
@@ -931,17 +951,17 @@ The frontend follows a modular component structure:
 ### Accessibility
 
 - **Semantic HTML**: Proper use of `<header>`, `<main>`, `<section>`, `<footer>`, `<nav>`
-- **ARIA Attributes**: 
+- **ARIA Attributes**:
   - Labels for form inputs
   - Role attributes where needed (e.g., `role="navigation"` for tab ribbon)
   - Live regions for dynamic content (could be enhanced)
-- **Keyboard Navigation**: 
+- **Keyboard Navigation**:
   - Tab order follows logical flow
   - Custom components ensure focus is managed (modals, dropdowns)
-- **Color Contrast**: 
+- **Color Contrast**:
   - Tailwind default colors meet WCAG AA standards
   - Custom colors in the theme (like `#FCFAF7`, `#1A1A1A`, `#F0ECE1`) are chosen for contrast
-- **Responsive Design**: 
+- **Responsive Design**:
   - Mobile-first breakpoints in Tailwind
   - Navigation adapts to screen size:
     - Desktop: Horizontal tab ribbon
@@ -951,27 +971,27 @@ The frontend follows a modular component structure:
 
 ### Performance Optimizations
 
-- **Code Splitting**: 
+- **Code Splitting**:
   - Vite automatically splits code by dynamic imports
   - Route-based splitting: Each section loads only when navigated to
   - Vendor splitting: Separate chunks for React, Firebase, etc.
-- **Lazy Loading**: 
+- **Lazy Loading**:
   - Sections are loaded only when their tab is active
   - Implemented via conditional rendering in `Dashboard.tsx`
   - Could be enhanced with `React.lazy` and `Suspense` for better loading states
-- **Caching Layer**: 
+- **Caching Layer**:
   - Custom hooks in `db.ts` reduce redundant Firestore reads
   - TTL-based caching balances freshness with performance
   - Household ID caching reduces duplicate lookups
-- **Efficient Re-renders**: 
+- **Efficient Re-renders**:
   - React.memo used where beneficial (not shown in current code but could be added)
   - useCallback and useMemo used in custom hooks to prevent unnecessary recalculations
   - Immutability patterns in state updates
-- **Asset Optimization**: 
+- **Asset Optimization**:
   - Images should be optimized before adding to `/assets/`
   - Consider using next-gen formats (WebP) with fallback
   - Vite optimizes asset bundling and minification
-- **Bundle Analysis**: 
+- **Bundle Analysis**:
   - Can be run with `npm run build` and examining `dist/` directory
   - Current bundle size is reasonable for the feature set
 
@@ -1012,22 +1032,22 @@ The frontend follows a modular component structure:
 
 ### Security Considerations
 
-- **Client-Side Security**: 
+- **Client-Side Security**:
   - Remember that client-side code is visible to users
   - Never store secrets in frontend code or environment variables exposed to client
   - Firebase config keys are safe to expose (they're public by design)
   - Validate all inputs on the backend because client-side validation can be bypassed
-- **Dependency Security**: 
+- **Dependency Security**:
   - Monitor npm vulnerabilities with `npm audit`
   - Keep dependencies updated
   - The package-lock.json ensures reproducible builds
-- **Content Security Policy (CSP)**: 
+- **Content Security Policy (CSP)**:
   - Not currently implemented but could be added for production
   - Would need to allow:
     - Firebase domains
     - Google APIs
     - Inline styles and scripts (if using certain Tailwind features)
-- **Data Privacy**: 
+- **Data Privacy**:
   - No personally identifiable information (PII) is stored beyond what's necessary for finance tracking
   - Users can delete their account (would need to implement)
   - Data minimization principles applied
@@ -1039,27 +1059,27 @@ The frontend follows a modular component structure:
   - Mobile browsers on iOS and Android
 - **Not Supported**: Internet Explorer (due to modern Java6 features)
 - **Polyfills**: Not currently used; assumes modern browser 환경
-- **Feature Detection**: 
+- **Feature Detection**:
   - Could add for specific APIs (like WebP images, etc.)
   - Currently relies on broad browser support
 
 ### Development Experience
 
-- **Fast Refresh**: 
+- **Fast Refresh**:
   - Vite provides instant updates on file changes
   - State preservation where possible (configured via `vite.config.ts`)
-- **Error Overlay**: 
+- **Error Overlay**:
   - Vite shows syntax errors and runtime errors in the browser overlay
   - Helps catch mistakes early
-- **TypeScript Integration**: 
+- **TypeScript Integration**:
   - Full type checking in IDE and build process
   - Path aliases (`@/*`) configured in `tsconfig.json` and `vite.config.ts`
   - Enables clean imports like `@/components/Button.tsx`
-- **Linting and Formatting**: 
+- **Linting and Formatting**:
   - ESLint and Prettier configured (checked via CI)
   - `npm run lint` runs TypeScript check (`tsc --noEmit`)
   - Prettier checks formatting
-- **Debugging**: 
+- **Debugging**:
   - React DevTools works for component inspection
   - Redux DevTools not applicable (no Redux)
   - Firebase emulator UI helps inspect data
@@ -1067,35 +1087,35 @@ The frontend follows a modular component structure:
 
 ### Future Enhancements
 
-- **State Management Library**: 
+- **State Management Library**:
   - Consider migrating to Zustand or Jotai for simpler global state
   - Or keep Context API if it meets needs
-- **UI Component Library**: 
+- **UI Component Library**:
   - Extract reusable components to a shared folder
   - Consider using Headless UI or Radix UI for accessibility primitives
-- **Form Validation Library**: 
+- **Form Validation Library**:
   - Implement Zod or Yup for schema-based validation
   - Integrate with React Hook Form for better performance
-- **Testing**: 
+- **Testing**:
   - Add unit tests with Vitest or Jest
   - Add end-to-end tests with Cypress or Playwright
-- **Performance Monitoring**: 
+- **Performance Monitoring**:
   - Add Lighthouse CI to performance budget
   - Track bundle size and key metrics over time
-- **Accessibility Audits**: 
+- **Accessibility Audits**:
   - Regular axe-core checks
   - Improve keyboard navigation and screen reader support
-- **Internationalization**: 
+- **Internationalization**:
   - Add i18n support for multiple languages
   - Start with JSON-based translation files
-- **Offline-First**: 
+- **Offline-First**:
   - Enhance caching strategy with service workers
   - Consider IndexedDB for persistent offline storage
   - Use Workbox or similar for PWA features
-- **Theming System**: 
+- **Theming System**:
   - Implement a design system with tokens
   - Allow custom themes beyond light/dark/system
-- **Animation Refinement**: 
+- **Animation Refinement**:
   - Use Framer Motion more extensively for page transitions
   - Add motion-preserving IDs for shared element transitions
 
@@ -1153,26 +1173,28 @@ The backend of Expense Planner is an Express.js server that handles API requests
 ### API Routes
 
 #### Health Check Endpoint
+
 - **Path**: `/api/health`
 - **Method**: GET
 - **Purpose**: Simple health check for monitoring and load balancers
-- **Response**: 
+- **Response**:
   ```json
   {
     "status": "ok",
     "environment": "React/Express/Firebase"
   }
   ```
-- **Implementation**: 
+- **Implementation**:
   - Located in `server.ts` lines 36-38
   - No authentication required
   - Returns environment info for debugging
 
 #### Receipt Scanning Endpoint
+
 - **Path**: `/api/scan-receipt`
 - **Method**: POST
 - **Purpose**: Process receipt images using Google Gemini AI to extract transaction details
-- **Protection**: 
+- **Protection**:
   - Applied `scanReceiptLimiter` middleware (10 requests/hour/IP)
   - Validates presence of `imageBase64` in request body
   - Checks for `GEMINI_API_KEY` in environment variables
@@ -1231,6 +1253,7 @@ The backend of Expense Planner is an Express.js server that handles API requests
 ### Business Logic
 
 #### AI Receipt Processing
+
 - **Service**: Google Gemini AI via `@google/genai` SDK
 - **Prompt Engineering**:
   - Detailed instruction for receipt analysis:
@@ -1261,6 +1284,7 @@ The backend of Expense Planner is an Express.js server that handles API requests
   - Other failures: Original error message or generic failure message
 
 #### Firebase Integration
+
 - **Admin SDK Initialization**:
   - Occurs implicitly through Firebase client SDK usage
   - Most database operations happen on frontend via client SDK
@@ -1273,6 +1297,7 @@ The backend of Expense Planner is an Express.js server that handles API requests
   - No direct Firebase Admin SDK calls in current implementation (frontend handles DB)
 
 #### Environment Validation
+
 - **Startup Checks**:
   - Verifies presence of critical environment variables
   - Provides clear error messages for missing configuration
@@ -1292,7 +1317,7 @@ The backend of Expense Planner is an Express.js server that handles API requests
   - Includes full error object for debugging
   - User-facing messages sanitized to avoid leaking sensitive info
 - **Specific Error Cases**:
-  - **Missing GEMINI_API_KEY**: 
+  - **Missing GEMINI_API_KEY**:
     - Returns 500 with message about server environment configuration
     - Guides user to set variable in settings
   - **AI Service Overload**:
@@ -1502,7 +1527,7 @@ The database layer of Expense Planner uses Firebase Firestore as its primary dat
 - **Persistence**: IndexedDB-based local cache for offline support
 - **Multi-tab Synchronization**: Built-in Firebase mechanism to sync state across browser tabs
 - **Consistency Model**: Eventual consistency with strong consistency within document reads
-- **Limits**: 
+- **Limits**:
   - 1 MiB maximum document size
   - 20 MiB maximum transaction size
   - Automatic indexing for query performance
@@ -1528,7 +1553,7 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;         // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - System defaults provide common categories (Food, Transport, Salary, etc.)
      - Users can create custom categories
      - Used in dropdowns for transaction categorization
@@ -1561,7 +1586,7 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Detailed salary breakdown for Indian payroll structure
      - Net salary calculated automatically
      - Used for income reporting and tax calculations
@@ -1587,12 +1612,12 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Core financial transaction storage
      - Positive amounts for income, negative for expenses
      - Linked to categories for reporting
      - Source tracking for audit trail
-   - **Indexes**: 
+   - **Indexes**:
      - Composite index on `(userId, householdId, date)`
      - Composite index on `(userId, householdId, categoryId, date)`
 
@@ -1611,7 +1636,7 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Set spending limits per category
      - Compared against actual spending for alerts
      - Supports rollover configurations (future enhancement)
@@ -1639,11 +1664,11 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Automate regular transactions (rent, subscriptions, salaries)
      - Background process generates transactions on due dates
      - Supports complex recurrence patterns
-   - **Indexes**: 
+   - **Indexes**:
      - Composite index on `(userId, householdId, nextDueDate)`
      - TTL index on `nextDueDate` for automatic cleanup of expired rules
 
@@ -1665,7 +1690,7 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Track loan details (home, personal, auto, etc.)
      - EMI calculated from principal, rate, and tenure
      - Linked to loan schedules for payment tracking
@@ -1690,11 +1715,11 @@ Data is organized into collections representing different financial entities. Al
        createdAt: Timestamp;                 // Creation timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Track individual loan payments
      - Show principal vs interest breakdown
      - Monitor payment status and history
-   - **Indexes**: 
+   - **Indexes**:
      - Composite index on `(loanId, paymentNumber)`
      - Composite index on `(loanId, dueDate)`
    - **Note**: Stored in batches of 400 documents per write operation to optimize Firestore limits
@@ -1716,7 +1741,7 @@ Data is organized into collections representing different financial entities. Al
        updatedAt: Timestamp;                 // Last update timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Track savings targets (vacation, down payment, emergency fund)
      - Progress visualization toward target
      - Optional linking to recurring rules for automatic savings
@@ -1727,24 +1752,25 @@ Data is organized into collections representing different financial entities. Al
    - **Document Structure**:
      ```typescript
      {
-       id: string;                           // Calculation ID (UUID)
-       userId: string;                       // Owner UID
-       financialYear: string;                // YYYY-YY format (e.g., "2026-27")
-       grossIncome: number;                  // Total income for FY
-       deductions: {                         // Tax deduction breakdown
-         section80C: number;                 // PF, PPF, ELSS, etc.
-         section80D: number;                 // Medical insurance
-         section24: number;                  // Home loan interest
+       id: string; // Calculation ID (UUID)
+       userId: string; // Owner UID
+       financialYear: string; // YYYY-YY format (e.g., "2026-27")
+       grossIncome: number; // Total income for FY
+       deductions: {
+         // Tax deduction breakdown
+         section80C: number; // PF, PPF, ELSS, etc.
+         section80D: number; // Medical insurance
+         section24: number; // Home loan interest
          // ... other sections
-       };
-       taxableIncome: number;                // Income after deductions
-       oldRegimeTax: number;                 // Tax under old regime
-       newRegimeTax: number;                 // Tax under new regime
-       regimeselected: 'old' | 'new';        // User's selected regime
-       createdAt: Timestamp;                 // Creation timestamp
+       }
+       taxableIncome: number; // Income after deductions
+       oldRegimeTax: number; // Tax under old regime
+       newRegimeTax: number; // Tax under new regime
+       regimeselected: "old" | "new"; // User's selected regime
+       createdAt: Timestamp; // Creation timestamp
      }
      ```
-   - **Usage**: 
+   - **Usage**:
      - Compare tax liability under old vs new regimes
      - Store user's regime selection
      - Basis for tax optimization suggestions
@@ -1755,18 +1781,18 @@ Data is organized into collections representing different financial entities. Al
     - **Document Structure**:
       ```typescript
       {
-        id: string;                           // Household ID (UUID)
-        name: string;                         // Household name (e.g., "Smith Family")
-        createdBy: string;                    // UID of creator
-        createdAt: Timestamp;                 // Creation timestamp
-        updatedAt: Timestamp;                 // Last update timestamp
+        id: string; // Household ID (UUID)
+        name: string; // Household name (e.g., "Smith Family")
+        createdBy: string; // UID of creator
+        createdAt: Timestamp; // Creation timestamp
+        updatedAt: Timestamp; // Last update timestamp
       }
       ```
-    - **Usage**: 
+    - **Usage**:
       - Group users for shared financial management
       - Single household per user at a time
       - Name for display purposes
-    - **Indexes**: 
+    - **Indexes**:
       - Single field index on `createdBy`
       - Array contains for member lookup (via household_members)
 
@@ -1775,21 +1801,21 @@ Data is organized into collections representing different financial entities. Al
     - **Document Structure**:
       ```typescript
       {
-        id: string;                           // Mapping ID (UUID)
-        userId: string;                       // User UID
-        householdId: string;                  // Household ID
-        role: 'primary' | 'spouse' | 'dependent'; // Access level
-        joinedAt: Timestamp;                  // When user joined household
-        createdAt: Timestamp;                 // Creation timestamp
+        id: string; // Mapping ID (UUID)
+        userId: string; // User UID
+        householdId: string; // Household ID
+        role: "primary" | "spouse" | "dependent"; // Access level
+        joinedAt: Timestamp; // When user joined household
+        createdAt: Timestamp; // Creation timestamp
       }
       ```
-    - **Usage**: 
+    - **Usage**:
       - Define access levels within household
       - Primary: Full access, can invite/remove members
       - Spouse: Full access to financial data
       - Dependent: Limited access (view-only, no modifications)
       - Enforces role-based access control in UI
-    - **Indexes**: 
+    - **Indexes**:
       - Composite index on `(userId, householdId)` (unique)
       - Composite index on `(householdId, role)`
 
@@ -1798,22 +1824,22 @@ Data is organized into collections representing different financial entities. Al
     - **Document Structure**:
       ```typescript
       {
-        id: string;                           // Invite ID (UUID)
-        householdId: string;                  // Target household ID
-        email: string;                        // Invitee email address
-        role: 'primary' | 'spouse' | 'dependent'; // Offered role
-        invitedBy: string;                    // UID of inviter
-        invitedAt: Timestamp;                 // Invitation timestamp
-        expiresAt: Timestamp;                 // Expiration timestamp (7 days)
-        createdAt: Timestamp;                 // Creation timestamp
+        id: string; // Invite ID (UUID)
+        householdId: string; // Target household ID
+        email: string; // Invitee email address
+        role: "primary" | "spouse" | "dependent"; // Offered role
+        invitedBy: string; // UID of inviter
+        invitedAt: Timestamp; // Invitation timestamp
+        expiresAt: Timestamp; // Expiration timestamp (7 days)
+        createdAt: Timestamp; // Creation timestamp
       }
       ```
-    - **Usage**: 
+    - **Usage**:
       - Manage household invitation workflow
       - Email-based invitation system
       - Role specification at invitation time
       - Automatic expiration for security
-    - **Indexes**: 
+    - **Indexes**:
       - Composite index on `(householdId, email)` (unique)
       - TTL index on `expiresAt` for automatic cleanup
 
@@ -2020,9 +2046,9 @@ The `db.ts` file provides a centralized interface for all Firestore operations, 
   - Queries use conditional logic:
     ```javascript
     const hhId = await getHhId();
-    const query = hhId 
-      ? firestore.collection(col).where('householdId', '==', hhId)
-      : firestore.collection(col).where('userId', '==', currentUser.uid);
+    const query = hhId
+      ? firestore.collection(col).where("householdId", "==", hhId)
+      : firestore.collection(col).where("userId", "==", currentUser.uid);
     ```
 - **Data Migration**:
   - When user joins household, existing personal data remains user-scoped
@@ -2132,6 +2158,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### Available Endpoints
 
 #### 1. Health Check Endpoint
+
 - **Path**: `/api/health`
 - **Method**: `GET`
 - **Purpose**: Service health monitoring and load balancer checks
@@ -2154,6 +2181,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Error Cases**: None expected (always returns 200 if server is running)
 
 #### 2. AI-Powered Receipt Scanning Endpoint
+
 - **Path**: `/api/scan-receipt`
 - **Method**: `POST`
 - **Purpose**: Extract structured data from receipt images using Google Gemini AI
@@ -2162,8 +2190,8 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Request Body**:
   ```json
   {
-    "imageBase64": "string (required)",  // Base64-encoded image data
-    "mimeType": "string (optional)"      // MIME type (e.g., "image/jpeg", "image/png")
+    "imageBase64": "string (required)", // Base64-encoded image data
+    "mimeType": "string (optional)" // MIME type (e.g., "image/jpeg", "image/png")
   }
   ```
 - **Successful Response**:
@@ -2184,7 +2212,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Example Response**:
   ```json
   {
-    "amount": 1250.50,
+    "amount": 1250.5,
     "date": "2026-08-15",
     "merchant": "SuperMart",
     "category": "Groceries"
@@ -2203,7 +2231,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Response Time**: Typically 1-3 seconds (dominated by Gemini API latency)
 - **Error Responses**:
   - `400 Bad Request`: `{ "error": "Missing image data" }`
-  - `500 Internal Server Error`: 
+  - `500 Internal Server Error`:
     - `{ "error": "GEMINI_API_KEY is not configured in the server environment. Please set GEMINI_API_KEY in the settings." }`
     - `{ "error": "The receipt scanning AI service is temporarily experiencing high traffic. Please try again in a few seconds." }` (for 503/high demand)
     - `{ "error": "Failed to process receipt with AI model" }` (generic failure)
@@ -2221,6 +2249,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### API Characteristics
 
 #### Request/Response Format
+
 - **Content-Type**: `application/json` for all endpoints
 - **Character Encoding**: UTF-8
 - **Response Compression**: None (small payloads)
@@ -2228,6 +2257,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Security Headers**: Basic set (could be enhanced with helmet.js)
 
 #### Error Handling Consistency
+
 - **HTTP Status Codes**:
   - `200 OK`: Successful operation
   - `400 Bad Request`: Client error (missing/invalid input)
@@ -2237,6 +2267,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 - **Error Message Sanitization**: No stack traces or internal details exposed to clients
 
 #### Rate Limiting Details
+
 - **Global Limiter**:
   - Window: 15 minutes (900,000 ms)
   - Limit: 100 requests per IP
@@ -2248,14 +2279,15 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Purpose: Protect AI quota and budget
   - Applied to: `/api/scan-receipt` only
 - **Key Generation**: Uses `req.ip` or `req.socket.remoteAddress` or `"unknown"`
-- **Headers**: 
+- **Headers**:
   - `X-RateLimit-Limit`: Request limit
   - `X-RateLimit-Remaining`: Requests remaining in window
   - `X-RateLimit-Reset`: Timestamp when limit resets
   - Standard headers enabled, legacy headers disabled
 
 #### Implementation Files
-- **`server.ts`**: 
+
+- **`server.ts`**:
   - Main application setup (lines 1-169)
   - Middleware configuration (body parsing, rate limiting, Vite)
   - Route definitions
@@ -2271,8 +2303,9 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### API Security
 
 #### Authentication Model
+
 - **Current State**: No authentication on API endpoints
-- **Rationale**: 
+- **Rationale**:
   - Core data operations handled client-side via Firebase Auth
   - API endpoints limited to non-sensitive operations (health check) and rate-limited AI services
   - Future endpoints requiring authentication would implement JWT or session validation
@@ -2282,6 +2315,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Add role-based access control for future backend operations
 
 #### Data Protection
+
 - **Input Sanitization**:
   - Receipt scanner validates base64 format and length
   - MIME type validation prevents unexpected file types
@@ -2296,6 +2330,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Limited blast radius if key compromised (only affects AI endpoint)
 
 #### Infrastructure Security
+
 - **Service Binding**:
   - Development: Binds to localhost (implicit via Express defaults)
   - Production: Binds to 0.0.0.0 (explicit in `server.ts` line 166)
@@ -2314,7 +2349,8 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### API Performance
 
 #### Latency Characteristics
-- **Health Check**: 
+
+- **Health Check**:
   - Minimal processing (<1ms)
   - Dominated by network latency
 - **Receipt Scanning**:
@@ -2323,16 +2359,20 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Request/response processing: <50ms
   - Total typical: 1000ms-3000ms
   - Worst case (retries, timeouts): Up to 10 seconds
+
 #### Throughput Capacity
-- **Health Check**: 
+
+- **Health Check**:
   - Limited by server connection capacity (~1000+ req/sec on modest hardware)
   - Global rate limiter: 100 req/15min/IP = ~0.11 req/sec/IP
 - **Receipt Scanning**:
   - Rate limited to 10 req/hour/IP = ~0.0028 req/sec/IP
   - Practical limit: Concurrent requests processed sequentially by AI API
   - Bottleneck: Gemini API rate limits and quotas
+
 #### Resource Utilization
-- **CPU**: 
+
+- **CPU**:
   - Minimal for request parsing/response formatting
   - Spikes during JSON processing (negligible)
   - AI processing offloaded to Google servers
@@ -2349,17 +2389,20 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### API Versioning and Evolution
 
 #### Current Version
+
 - Implicitly v1 (no versioning in path)
 - Suitable for current scope of endpoints
 
 #### Versioning Strategy (Future)
+
 - **Path Versioning**: `/api/v1/scan-receipt` when new versions needed
 - **Backward Compatibility**: Maintain old versions for deprecation period
 - **Feature Flags**: Enable/disable features via environment variables
 - **Deprecation Policy**: 6-month notice for breaking changes
 
 #### Extension Points
-- **New Endpoints**: 
+
+- **New Endpoints**:
   - `/api/admin/*` for system management (would require auth)
   - `/api/webhook/*` for third-party integrations
   - `/api/analytics/*` for aggregated metrics
@@ -2375,36 +2418,39 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### Documentation and Testing
 
 #### Self-Documentation
+
 - **Inline Documentation**: JSDoc comments in route handlers
-- **Example Usage**: 
+- **Example Usage**:
   - Health check: `GET /api/health`
   - Receipt scan: `POST /api/scan-receipt` with base64 image
 - **Error Codes**: Clearly defined in implementation
 - **Rate Limit Headers**: Exposed to clients for awareness
 
 #### Manual Testing
+
 - **curl Examples**:
   ```bash
   # Health check
   curl -i http://localhost:3000/api/health
-  
+
   # Receipt scan (requires valid image and API key)
   curl -X POST http://localhost:3000/api/scan-receipt \
     -H "Content-Type: application/json" \
     -d '{"imageBase64":"$(base64 -i receipt.jpg)", "mimeType":"image/jpeg"}'
   ```
 - **Postman/Insomnia**: Collections can be created for testing
-- **Browser Fetch API**: 
+- **Browser Fetch API**:
   ```javascript
-  fetch('/api/scan-receipt', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBase64: imgBase64 })
-  })
+  fetch("/api/scan-receipt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageBase64: imgBase64 }),
+  });
   ```
 
 #### Automated Testing (Future)
-- **Unit Tests**: 
+
+- **Unit Tests**:
   - Mock Google Gemini API
   - Test validation logic
   - Test error handling paths
@@ -2423,23 +2469,25 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### Limitations and Constraints
 
 #### Functional Limitations
+
 - **Read-Only Data Access**: No endpoints for creating/reading/updating/deleting financial data
   - Intentional design to leverage Firebase real-time capabilities
   - Would require authentication and authorization for sensitive operations
 - **Single AI Functionality**: Only receipt scanning currently implemented
   - Limited to use cases involving image-to-text conversion
   - No other AI services (forecasting, categorization, etc.) exposed
-- **No WebSocket/Real-Time API**: 
+- **No WebSocket/Real-Time API**:
   - Real-time data handled via Firebase Firestore listeners
   - No server-sent events or WebSocket endpoints
   - Simpler architecture but less flexibility for server-pushed updates
 
 #### Technical Constraints
-- **Rate Limiting Scope**: 
+
+- **Rate Limiting Scope**:
   - Memory-based limiter not suitable for multi-instance deployments
   - Would require shared store (Redis) for horizontal scaling
   - Current implementation fine for single-instance Docker/Vercel
-- **Environment Dependency**: 
+- **Environment Dependency**:
   - Requires `GEMINI_API_KEY` for core functionality
   - Graceful degradation not implemented (AI features fail if key missing)
   - Health check remains operational without AI key
@@ -2453,6 +2501,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Limited to image formats supported by Gemini API
 
 #### Operational Considerations
+
 - **Cold Starts** (Vercel):
   - Serverless function cold start adds latency (~100-500ms)
   - Mitigated by keeping functions warm with periodic pings
@@ -2469,6 +2518,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
 ### Future Enhancements
 
 #### Additional Endpoints
+
 - **Admin Endpoints** (would require authentication):
   - `/api/admin/stats`: Usage statistics and metrics
   - `/api/admin/logs`: Recent error logs (paginated)
@@ -2484,6 +2534,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - `/api/api/trend-analysis`: Month-over-month comparisons
 
 #### Enhanced Receipt Scanning
+
 - **Batch Processing**:
   - `/api/scan-receipts`: Accept multiple images in one request
   - Returns array of results with correlation IDs
@@ -2500,6 +2551,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Enable UI to highlight low-confidence entries for review
 
 #### Security Improvements
+
 - **Authentication**:
   - Add JWT validation middleware for protected endpoints
   - Implement API key verification for admin functions
@@ -2518,6 +2570,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Add structured logging (JSON format) for log aggregation
 
 #### Performance Optimization
+
 - **Response Compression**:
   - Add gzip/brotli compression for larger responses
   - Minimal benefit for current JSON responses
@@ -2532,6 +2585,7 @@ The API layer of Expense Planner consists of a minimal set of endpoints focused 
   - Add timeout and retry configuration externalization
 
 #### Developer Experience
+
 - **OpenAPI/Swagger**:
   - Generate specification from JSDoc comments
   - Serve Swagger UI at `/api/docs`
@@ -2572,7 +2626,7 @@ While the codebase demonstrates Email/Password flow explicitly, the Firebase con
 
 1. **Frontend Initiation**: User submits registration form (`src/pages/Login.tsx`)
 2. **Input Validation**: Frontend validates email format, password strength, and required fields
-3. **Firebase Auth Call**: `createUserWithEmailAndPassword(auth, email, password)` 
+3. **Firebase Auth Call**: `createUserWithEmailAndPassword(auth, email, password)`
 4. **User Creation**: Firebase creates user account and returns `UserCredential`
 5. **Household Creation**: On successful registration, AuthContext automatically creates a household for the new user
 6. **State Update**: AuthContext updates user, householdMember, and household state
@@ -2628,12 +2682,12 @@ Stored in the `household_members` Firestore collection with the following struct
 
 ```typescript
 {
-  id: string;                    // Mapping ID (UUID)
-  userId: string;                // User UID
-  householdId: string;           // Household ID
-  role: 'primary' | 'spouse' | 'dependent'; // Access level
-  joinedAt: Timestamp;           // When user joined household
-  createdAt: Timestamp;          // Creation timestamp
+  id: string; // Mapping ID (UUID)
+  userId: string; // User UID
+  householdId: string; // Household ID
+  role: "primary" | "spouse" | "dependent"; // Access level
+  joinedAt: Timestamp; // When user joined household
+  createdAt: Timestamp; // Creation timestamp
 }
 ```
 
@@ -2711,7 +2765,7 @@ All authentication-related errors are logged to the console for debugging while 
 
 - **Firebase Emulators**: Authentication emulator can be used for local development (`firebase emulators:start --only auth`)
 - **Environment Variables**: No authentication-specific environment variables required; Firebase config uses `VITE_*` prefixed variables
-- **Testing Strategy**: 
+- **Testing Strategy**:
   - Unit tests mock `firebase/auth` functions
   - Integration tests verify end-to-end flow with Firebase emulator
   - Test scenarios include registration, login, logout, household creation, and role-based access
@@ -2729,4 +2783,3 @@ All authentication-related errors are logged to the console for debugging while 
 - **Auth State Persistence**: Improve handling of tab/window state changes and authentication persistence
 
 Authentication in Expense Planner provides a secure, scalable foundation for user identity and household-based collaboration, leveraging Firebase's robust authentication infrastructure while maintaining a clean separation of concerns between frontend and backend concerns.
-

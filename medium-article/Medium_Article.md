@@ -6,10 +6,10 @@ In today's fast-paced world, managing personal and family finances has become in
 
 This comprehensive guide explores every aspect of Expense Planner, from its architectural foundations to its cutting-edge features, providing developers, product managers, and finance enthusiasts with an in-depth understanding of how this application transforms financial management.
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                                        | Dark Mode                                                  |
+| ----------------------------------------------------------------- | ---------------------------------------------------------- |
 | ![Expense Planner Light Interface](assets/expense-full-light.png) | ![Expense Planner Dark Interface](assets/expense-full.png) |
-*Figure 1: Expense Planner's comprehensive dashboard interface*
+| _Figure 1: Expense Planner's comprehensive dashboard interface_   |
 
 ## Problem Statement
 
@@ -51,60 +51,71 @@ Expense Planner was designed around these five principles from day one.
 Expense Planner offers an extensive feature set designed to cover all aspects of personal and family financial management:
 
 ### AI-Powered Receipt Scanning
+
 - Upload receipt images to automatically extract amount, date, merchant, and category
 - Utilizes Google Gemini AI for accurate optical character recognition (OCR) and data extraction
 - Supports multiple image formats (JPG, PNG, HEIC) with automatic HEIC-to-JPEG conversion
 - Implements client-server fallback mechanism for maximum deployment flexibility
 
 ### Multi-User Household Support
+
 - Create or join households with role-based permissions (primary, spouse, dependent)
 - Real-time data synchronization across household members
 - Role-based access control for different financial operations
 - Secure invitation system for adding family members
 
 ### Comprehensive Financial Tracking Modules
+
 - **Income Tracking**: Detailed breakdown including basic salary, HRA, allowances, bonuses, and deductions
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                   | Dark Mode                             |
+| -------------------------------------------- | ------------------------------------- |
 | ![Income Light](assets/tab-income-light.png) | ![Income Dark](assets/tab-income.png) |
+
 - **Expense Management**: Customizable categorization with payment mode tracking (UPI, Card, Cash, Netbanking)
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                     | Dark Mode                               |
+| ---------------------------------------------- | --------------------------------------- |
 | ![Expense Light](assets/tab-expense-light.png) | ![Expense Dark](assets/tab-expense.png) |
+
 - **Budget Management**: Monthly limits per category with real-time spending alerts
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                    | Dark Mode                              |
+| --------------------------------------------- | -------------------------------------- |
 | ![Budget Light](assets/tab-budgets-light.png) | ![Budget Dark](assets/tab-budgets.png) |
+
 - **Loan & EMI Tracking**: Amortization schedules and outstanding balance monitoring
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                 | Dark Mode                           |
+| ------------------------------------------ | ----------------------------------- |
 | ![Loans Light](assets/tab-loans-light.png) | ![Loans Dark](assets/tab-loans.png) |
+
 - **Investment Portfolio Tracking**: Mutual funds, stocks, fixed deposits, PPF, NPS, and gold investments
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                             | Dark Mode                                       |
+| ------------------------------------------------------ | ----------------------------------------------- |
 | ![Investments Light](assets/tab-investments-light.png) | ![Investments Dark](assets/tab-investments.png) |
+
 - **Savings Goals**: Target-based goal setting with progress tracking and linked recurring rules
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                 | Dark Mode                           |
+| ------------------------------------------ | ----------------------------------- |
 | ![Goals Light](assets/tab-goals-light.png) | ![Goals Dark](assets/tab-goals.png) |
+
 - **Tax Planning**: Old vs. new tax regime comparison with personalized recommendations
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                 | Dark Mode                           |
+| ------------------------------------------ | ----------------------------------- |
 | ![Taxes Light](assets/tab-taxes-light.png) | ![Taxes Dark](assets/tab-taxes.png) |
 
 ### Additional Capabilities
+
 - **Recurring Transactions**: Automate regular expenses and incomes with flexible frequency options
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                         | Dark Mode                                   |
+| -------------------------------------------------- | ------------------------------------------- |
 | ![Recurring Light](assets/tab-recurring-light.png) | ![Recurring Dark](assets/tab-recurring.png) |
+
 - **Data Export**: Generate financial reports in multiple formats
 - **Responsive Design**: Mobile-friendly interface with adaptive layouts
 - **Theme Support**: Light/dark mode with system preference detection
@@ -115,10 +126,10 @@ Expense Planner offers an extensive feature set designed to cover all aspects of
 
 Expense Planner provides seamless light and dark mode support, automatically adapting to the user's system preference while allowing manual toggling. The theme system is built using Tailwind CSS dark mode strategy, ensuring consistent styling across all components.
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Dashboard Light Mode](assets/expense-full-light.png) | ![Dashboard Dark Mode](assets/expense-full.png) |
-*Figure 2: Expense Planner dashboard in light and dark modes*
+| Light Mode                                                    | Dark Mode                                       |
+| ------------------------------------------------------------- | ----------------------------------------------- |
+| ![Dashboard Light Mode](assets/expense-full-light.png)        | ![Dashboard Dark Mode](assets/expense-full.png) |
+| _Figure 2: Expense Planner dashboard in light and dark modes_ |
 
 The theme context manages color schemes, ensuring that charts, forms, and navigation elements maintain readability and visual appeal in both modes.
 
@@ -167,12 +178,14 @@ Expense Planner follows a well-designed three-tier architecture that ensures sca
 ### High-Level Architecture
 
 ![System Architecture Diagram](assets/diagram-architecture.svg)
-*Figure 3: Expense Planner's three-tier architecture with dual deployment options*
+_Figure 3: Expense Planner's three-tier architecture with dual deployment options_
 
 The application consists of four primary layers, each with clearly defined responsibilities:
 
 #### 1. Client Layer
+
 The client layer is a React/Vite single-page application responsible for:
+
 - **UI Rendering**: Building responsive interfaces using React 19 and Tailwind CSS 4
 - **State Management**: Managing application state through React Context (Auth, Theme) and local component state
 - **User Interactions**: Handling form submissions, navigation, and real-time updates
@@ -180,14 +193,18 @@ The client layer is a React/Vite single-page application responsible for:
 - **Theme Adaptation**: Automatically switching between light and dark modes based on system preferences
 
 #### 2. API Layer
+
 The API layer handles business logic, data validation, and integration with external services through two deployment paths:
+
 - **Express Server**: For local development, Docker deployments, and environments requiring full server control
 - **Vercel Serverless Function**: For managed, scalable deployments with automatic scaling (`api/scan-receipt.ts` specifically handles AI receipt processing)
 
 Both paths share the same business logic implementation, ensuring feature parity regardless of deployment target.
 
 #### 3. Data Layer
+
 Firebase Firestore serves as the primary data store, chosen for its:
+
 - **Real-time Capabilities**: Enabling instantaneous synchronization across household members
 - **Offline Persistence**: Allowing continued operation during network interruptions
 - **Automatic Scaling**: Handling varying loads without manual intervention
@@ -197,7 +214,9 @@ Firebase Firestore serves as the primary data store, chosen for its:
 The application implements an intelligent caching layer on top of Firestore to reduce reads and improve response times for frequently accessed data.
 
 #### 4. External Services
+
 Expense Planner integrates with specialized external services for optimal functionality:
+
 - **Google Gemini AI**: Powers the receipt scanning feature with state-of-the-art OCR and contextual understanding
 - **Firebase Authentication**: Provides secure, scalable user management with email/password and social login options
 
@@ -284,10 +303,10 @@ The deliberate avoidance of a global store (Redux, Zustand) keeps the mental mod
 
 ### Key Frontend Components
 
-| Light Mode | Dark Mode |
-|------------|-----------|
+| Light Mode                                                  | Dark Mode                                            |
+| ----------------------------------------------------------- | ---------------------------------------------------- |
 | ![Dashboard Interface Light](assets/tab-overview-light.png) | ![Dashboard Interface Dark](assets/tab-overview.png) |
-*Figure 4: Dashboard overview showing financial summary*
+| _Figure 4: Dashboard overview showing financial summary_    |
 
 1. **ExpenseSection**: Primary interface for logging expenses with AI receipt scanning capabilities
 2. **IncomeSection**: Detailed income tracking with breakdown components
@@ -296,10 +315,10 @@ The deliberate avoidance of a global store (Redux, Zustand) keeps the mental mod
 5. **ReceiptScanner**: Library handling client-server fallback for Gemini AI integration
 6. **ProtectedRoute**: Ensures only authenticated users can access application features
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Expense Entry Form Light](assets/tab-expense-light.png) | ![Expense Entry Form Dark](assets/tab-expense.png) |
-*Figure 5: Expense entry form with AI receipt scanning functionality*
+| Light Mode                                                            | Dark Mode                                          |
+| --------------------------------------------------------------------- | -------------------------------------------------- |
+| ![Expense Entry Form Light](assets/tab-expense-light.png)             | ![Expense Entry Form Dark](assets/tab-expense.png) |
+| _Figure 5: Expense entry form with AI receipt scanning functionality_ |
 
 ## Backend Architecture
 
@@ -336,8 +355,9 @@ Errors are categorized into client errors (4xx — invalid input, authentication
 ### Request Processing Flow
 
 #### Express Server Request Flow
+
 ![Express Request Flow](assets/diagram-receipt-flow.svg)
-*Figure 6: Request flow for Express server deployment*
+_Figure 6: Request flow for Express server deployment_
 
 1. **Client sends HTTPS request** to API endpoint with Authorization header containing Firebase ID token
 2. **Middleware chain execution**:
@@ -349,7 +369,9 @@ Errors are categorized into client errors (4xx — invalid input, authentication
 5. **Response formatting**: JSON response with appropriate HTTP status code returns to client; errors flow through the centralized error handler for consistent formatting
 
 #### Vercel Serverless Function Flow
+
 The Vercel function follows a similar logical pattern but operates within serverless constraints:
+
 - **Cold start optimization**: Module-level code (imports, SDK initialization) executes once per container instance, with per-request work kept minimal
 - **Automatic scaling**: New instances spawn under load without configuration, and idle instances terminate to reduce cost
 - **Built-in body parsing**: 10MB limit for JSON payloads, appropriate for base64-encoded receipt images
@@ -375,7 +397,7 @@ Expense Planner leverages Firebase Firestore's flexible NoSQL document database 
 ### Entity Relationship Diagram
 
 ![ER Diagram](assets/diagram-er.svg)
-*Figure 7: Entity relationship diagram showing data model relationships*
+_Figure 7: Entity relationship diagram showing data model relationships_
 
 ### Collections Structure
 
@@ -385,6 +407,7 @@ The application utilizes multiple interconnected collections, each designed with
 
 **households**  
 Top-level container for financial data. Each document stores:
+
 - `name`: Household name (e.g., "Smith Family")
 - `creator_uid`: UID of the user who created the household
 - `created_at`: Timestamp of household creation
@@ -392,6 +415,7 @@ Top-level container for financial data. Each document stores:
 
 **household_members**  
 Junction table implementing many-to-many relationship between users and households with role-based access control:
+
 - `uid`: User ID (foreign key to Firebase Auth users)
 - `household_id`: Household ID (foreign key to households collection)
 - `role`: Enumerated role (primary, spouse, dependent) determining permissions
@@ -400,6 +424,7 @@ Junction table implementing many-to-many relationship between users and househol
 
 **transactions**  
 The workhorse collection storing every financial movement:
+
 - `amount`: Transaction value (negative for expenses, positive for income)
 - `date`: Transaction date (stored as Firestore Timestamp for timezone safety)
 - `merchant`: Payee/payer name (store, employer, person, etc.)
@@ -414,6 +439,7 @@ The workhorse collection storing every financial movement:
 
 **income_entries**  
 Detailed income tracking that complements the transactions collection:
+
 - `gross_amount`: Total income before deductions
 - `net_amount`: Take-home pay after deductions
 - `breakdown`: Nested object with salary components (basic, HRA, allowances, bonuses)
@@ -426,6 +452,7 @@ Detailed income tracking that complements the transactions collection:
 
 **budgets**  
 Monthly spending guardrails with proactive alerts:
+
 - `category`: Reference to categories collection
 - `amount`: Monthly spending limit
 - `period_start`: First day of budget month
@@ -438,6 +465,7 @@ Monthly spending guardrails with proactive alerts:
 
 **recurring_rules**  
 Template engine for automated transaction creation:
+
 - `template`: Partial transaction object (amount, category, description, etc.)
 - `frequency`: Enumerated type (daily, weekly, monthly, yearly, custom)
 - `interval`: Integer multiplier for frequency (e.g., every 2 weeks)
@@ -449,6 +477,7 @@ Template engine for automated transaction creation:
 
 **loans** & **loan_schedules**  
 Two-collection pattern for efficient loan tracking:
+
 - **loans**: Principal loan metadata
   - `principal_amount`: Original loan amount
   - `interest_rate`: Annual percentage rate (APR)
@@ -471,6 +500,7 @@ Two-collection pattern for efficient loan tracking:
 
 **goals**  
 Target-based savings motivation:
+
 - `name`: Goal description (e.g., "Emergency Fund", "Vacation to Hawaii")
 - `target_amount`: Desired savings amount
 - `current_amount`: Progress toward target
@@ -483,6 +513,7 @@ Target-based savings motivation:
 
 **tax_calculations**  
 Year-round tax planning assistance:
+
 - `assessment_year`: Financial year for calculation (e.g., "2025-26")
 - `gross_income`: Total income from all sources
 - `deductions`: Itemized deduction amounts by section (80C, 80D, etc.)
@@ -497,6 +528,7 @@ Year-round tax planning assistance:
 
 **categories**  
 Hierarchical expense/income classification system:
+
 - `name`: Category name (e.g., "Food & Dining", "Salary")
 - `type`: Enumerated type (expense or income)
 - `parent_id`: Reference to parent category (null for top-level)
@@ -507,6 +539,7 @@ Hierarchical expense/income classification system:
 
 **investment_accounts** & **investment_holdings** & **investment_valuations**  
 Three-collection pattern for investment portfolio tracking:
+
 - **investment_accounts**: Investment vehicles and platforms
   - `name`: Account name (e.g., "SBI Mutual Fund", "Zerodha Demat")
   - `type`: Enumerated type (mutual_fund, stock, fd, ppf, nps, gold, etc.)
@@ -537,6 +570,7 @@ Firestore's automatic indexing, combined with thoughtful query design, minimizes
 #### Automatic Index Utilization
 
 The application leverages Firestore's automatic index creation for:
+
 - **Single-field indexes**: Queries filtering on one field (e.g., `where("category", "==", "food")`)
 - **Range queries**: Inequality filters on timestamps or numbers (e.g., `where("date", ">=", startDate)`)
 - **Equality + ordering**: Equality filters combined with ordering (e.g., `where("household_id", "==", householdId).orderBy("date", "desc")`)
@@ -544,6 +578,7 @@ The application leverages Firestore's automatic index creation for:
 #### Compound Query Optimization
 
 For complex multi-filter scenarios, the application structures queries to work with Firestore's compound indexes:
+
 - **Transaction listings**: `where("household_id", "==", hhId).where("date", ">=", start).where("date", "<=", end).orderBy("date", "desc")`
 - **Budget vs actual**: `where("category", "==", catId).where("date", ">=", monthStart).where("date", "<=", monthEnd)`
 - **Goal progress**: `where("user_id", "==", uid).where("target_date", ">=", today)`
@@ -551,6 +586,7 @@ For complex multi-filter scenarios, the application structures queries to work w
 #### Denormalization for Read Efficiency
 
 Where query patterns indicate frequent access to related data, strategic denormalization reduces read operations:
+
 - **Transaction records** include merchant name and category name alongside IDs, eliminating joins for display
 - **User profiles** cache household names and roles to avoid household_members lookups in UI headers
 - **Loan schedules** store calculated opening/closing balances to avoid recomputing amortization on each read
@@ -558,6 +594,7 @@ Where query patterns indicate frequent access to related data, strategic denorma
 #### Index Monitoring and Maintenance
 
 While Firestore handles automatic index creation, the application monitors query patterns through:
+
 - **Development logging**: Flagging queries that might benefit from composite indexes
 - **Production metrics**: Tracking read operation counts per collection
 - **Periodic review**: Evaluating whether manual composite indexes would reduce cost for high-volume queries
@@ -569,12 +606,12 @@ This approach ensures optimal performance without the maintenance burden of mana
 ### AI-Powered Receipt Scanning Workflow
 
 ![Receipt Scanning Workflow](assets/diagram-receipt-flow.svg)
-*Figure 8: Detailed receipt scanning workflow with client-server fallback*
+_Figure 8: Detailed receipt scanning workflow with client-server fallback_
 
 The receipt scanning feature represents one of Expense Planner's most innovative capabilities:
 
 1. **Image Acquisition**: User selects or captures receipt image (JPG, PNG, HEIC supported)
-2. **Preprocessing**: 
+2. **Preprocessing**:
    - HEIC images automatically converted to JPEG format
    - Optional client-side resizing for oversized images
    - Base64 encoding for API transmission
@@ -593,10 +630,10 @@ The receipt scanning feature represents one of Expense Planner's most innovative
 
 ### Household Collaboration System
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Household Light](assets/tab-household-light.png) | ![Household Dark](assets/tab-household.png) |
-*Figure 9: Household management interface in light and dark modes*
+| Light Mode                                                         | Dark Mode                                   |
+| ------------------------------------------------------------------ | ------------------------------------------- |
+| ![Household Light](assets/tab-household-light.png)                 | ![Household Dark](assets/tab-household.png) |
+| _Figure 9: Household management interface in light and dark modes_ |
 
 The multi-user household functionality enables seamless financial collaboration:
 
@@ -618,17 +655,17 @@ The multi-user household functionality enables seamless financial collaboration:
 
 ### Financial Reporting and Analytics
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Reports Light](assets/tab-reports-light.png) | ![Reports Dark](assets/tab-reports.png) |
-*Figure 10: Financial reports interface in light and dark modes*
+| Light Mode                                                       | Dark Mode                               |
+| ---------------------------------------------------------------- | --------------------------------------- |
+| ![Reports Light](assets/tab-reports-light.png)                   | ![Reports Dark](assets/tab-reports.png) |
+| _Figure 10: Financial reports interface in light and dark modes_ |
 
 Expense Planner provides comprehensive reporting capabilities across all financial domains:
 
 ![Tax Comparison Chart](assets/diagram-tax-chart.svg)
-*Figure 11: Tax regime comparison visualization*
+_Figure 11: Tax regime comparison visualization_
 
-1. **Dashboard Overview**: 
+1. **Dashboard Overview**:
    - Net worth calculation (assets minus liabilities)
    - Monthly income vs. expenses summary
    - Budget utilization percentages by category
@@ -637,22 +674,22 @@ Expense Planner provides comprehensive reporting capabilities across all financi
 
 2. **Detailed Reports**:
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Reports Full Light](assets/reports-full-light.png) | ![Reports Full Dark](assets/reports-full.png) |
-*Figure 12: Detailed financial reports in light and dark modes*
+| Light Mode                                                      | Dark Mode                                     |
+| --------------------------------------------------------------- | --------------------------------------------- |
+| ![Reports Full Light](assets/reports-full-light.png)            | ![Reports Full Dark](assets/reports-full.png) |
+| _Figure 12: Detailed financial reports in light and dark modes_ |
 
-   - **Expense Reports**: Category-wise spending trends, monthly comparisons, payment method analysis
-   - **Income Reports**: Source breakdown, growth trends, deduction analysis
-   - **Investment Reports**: Portfolio allocation, performance benchmarks, dividend tracking
-   - **Loan Reports**: Amortization schedules, interest paid vs. principal, early payment impact analysis
-   - **Goal Tracking**: Progress visualization, projected completion dates, required monthly savings
-   - **Tax Planning**: Side-by-side old vs. new regime comparison, deduction optimization suggestions
+- **Expense Reports**: Category-wise spending trends, monthly comparisons, payment method analysis
+- **Income Reports**: Source breakdown, growth trends, deduction analysis
+- **Investment Reports**: Portfolio allocation, performance benchmarks, dividend tracking
+- **Loan Reports**: Amortization schedules, interest paid vs. principal, early payment impact analysis
+- **Goal Tracking**: Progress visualization, projected completion dates, required monthly savings
+- **Tax Planning**: Side-by-side old vs. new regime comparison, deduction optimization suggestions
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Taxes Full Light](assets/taxes-full-light.png) | ![Taxes Full Dark](assets/taxes-full.png) |
-*Figure 13: Tax planning comparison in light and dark modes*
+| Light Mode                                                   | Dark Mode                                 |
+| ------------------------------------------------------------ | ----------------------------------------- |
+| ![Taxes Full Light](assets/taxes-full-light.png)             | ![Taxes Full Dark](assets/taxes-full.png) |
+| _Figure 13: Tax planning comparison in light and dark modes_ |
 
 3. **Export Capabilities**:
    - PDF generation for comprehensive financial reports
@@ -680,6 +717,7 @@ Expense Planner offers flexible deployment strategies to accommodate different t
 For users preferring full control over their infrastructure:
 
 #### Docker Deployment
+
 ```bash
 # Quick start with Docker Compose
 docker compose up --build
@@ -692,11 +730,13 @@ docker run -d -p 3000:3000 --name expense-planner-app \
 ```
 
 The Docker implementation uses a multi-stage build process:
+
 - **Builder Stage**: Installs dependencies, builds frontend assets, bundles server code
 - **Runner Stage**: Production-optimized image with only runtime dependencies
 - **Result**: Approximately 150-200MB image size with enhanced security through non-root user execution
 
 #### Traditional Node.js Deployment
+
 ```bash
 # Setup and deployment
 npm install --omit=dev
@@ -709,7 +749,9 @@ NODE_ENV=production node dist/server.cjs
 For users seeking managed infrastructure with automatic scaling:
 
 #### GitHub Actions CI/CD Pipeline
+
 The automated pipeline handles:
+
 1. Linting and TypeScript checking
 2. Unit testing (when implemented)
 3. Production build generation
@@ -719,6 +761,7 @@ The automated pipeline handles:
 7. Docker image building and pushing to GHCR
 
 #### Manual Vercel Deployment
+
 ```bash
 # Install CLI and configure
 npm install -g vercel
@@ -740,6 +783,7 @@ The dual deployment strategy provides significant advantages:
 ### Environment Variables and Configuration
 
 Expense Planner uses environment variables for configuration, keeping secrets out of source code. Key variables include:
+
 - `GEMINI_API_KEY`: For AI receipt scanning (optional if using client-side key)
 - `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`: For Firebase Admin SDK initialization
 - `NODE_ENV`: Set to 'production' for production builds
@@ -760,6 +804,7 @@ Expense Planner uses environment variables for configuration, keeping secrets ou
 ### Custom Domains and SSL
 
 Both deployment options support custom domains with automatic SSL provisioning:
+
 - Vercel provides built-in SSL for custom domains via Let's Encrypt.
 - Docker deployments can use a reverse proxy like Nginx or Caddy to terminate SSL and forward to the Express server.
 
@@ -773,10 +818,10 @@ Security is a foundational aspect of Expense Planner's design, implementing mult
 
 ### Authentication and Authorization
 
-| Light Mode | Dark Mode |
-|------------|-----------|
-| ![Login Light](assets/login-light.png) | ![Login Dark](assets/login.png) |
-*Figure 14: Login screen in light and dark modes*
+| Light Mode                                        | Dark Mode                       |
+| ------------------------------------------------- | ------------------------------- |
+| ![Login Light](assets/login-light.png)            | ![Login Dark](assets/login.png) |
+| _Figure 14: Login screen in light and dark modes_ |
 
 - **Firebase Authentication**: Industry-standard secure authentication with email/password provider
 - **ID Token Verification**: Firebase Admin SDK validates tokens on each API request
@@ -789,7 +834,7 @@ Security is a foundational aspect of Expense Planner's design, implementing mult
 - **Firestore Security**: Automatic encryption at rest and in transit
 - **Environment Variable Separation**: Secrets stored outside codebase
 - **Input Validation**: Server-side validation for all API endpoints
-- **Rate Limiting**: 
+- **Rate Limiting**:
   - Global: 100 requests/15min/IP (Express server)
   - Receipt Scanning: 10 requests/hour/IP (protects expensive AI operations)
   - Vercel functions inherit platform-specific limits
@@ -815,18 +860,18 @@ Expense Planner implements numerous performance optimizations to ensure responsi
 
 ### Frontend Optimizations
 
-- **Vite Build Optimization**: 
+- **Vite Build Optimization**:
   - Code splitting for route-based chunking ensures users only download JavaScript needed for the current view
   - Asset hashing for effective cache busting allows long-term caching while guaranteeing cache updates when content changes
   - CSS extraction and minimization removes unused styles and compresses essential stylesheets
   - Pre-bundling of dependencies improves initial load time
 - **Lazy Loading**: Components and routes load only when needed through React.lazy and dynamic imports, reducing initial bundle size by approximately 40%
-- **Image Optimization**: 
+- **Image Optimization**:
   - HEIC to JPEG conversion reduces file size by 60-80% for iOS photos while maintaining visual quality
   - Client-side resizing for oversized images prevents uploading massive files unnecessarily
   - Appropriate format selection based on content (JPEG for photos, PNG for graphics with transparency, WebP when supported)
   - Images are served at multiple resolutions with srcset for optimal display on different screen densities
-- **Caching Strategy**: 
+- **Caching Strategy**:
   - 25-second memory cache for frequently accessed data like dashboard widgets and tab balances
   - 30-second household cache for family-related information that changes less frequently than transaction data
   - Cache invalidation on write operations to maintain consistency — when a transaction is added, related caches (budgets, goals, reports) are immediately invalidated
@@ -841,23 +886,23 @@ Expense Planner implements numerous performance optimizations to ensure responsi
 ### Backend Optimizations
 
 - **ESBuild Server Bundle**: Fast, efficient bundling for Node.js environments producing a single deployable file in milliseconds
-- **Middleware Optimization**: 
+- **Middleware Optimization**:
   - Applied only where necessary (e.g., rate limiting on specific endpoints like /api/scan-receipt)
   - Efficient JSON parsing with size limits prevents JSON bomb attacks
   - Compression middleware (gzip/brotli) reduces response sizes by 60-80%
-- **Firestore Query Optimization**: 
+- **Firestore Query Optimization**:
   - Leverages automatic indexing for common query patterns
   - Efficient query patterns minimizing document reads through careful indexing strategies
   - Batched operations where applicable (e.g., batch writes for recurring rule processing)
   - Use of Firestore transactions only when necessary to avoid contention
   - Projection queries to fetch only needed fields rather than entire documents
-- **AI Processing Efficiency**: 
+- **AI Processing Efficiency**:
   - Multiple model fallbacks (gemini-2.0-flash → gemini-1.5-flash → gemini-1.0-pro) for reliability and performance
   - Transient error detection with intelligent retry logic (exponential backoff with jitter)
   - Result caching where appropriate to reduce redundant API calls (e.g., caching merchant/category predictions for similar receipts)
   - Request deduplication — identical receipt scans within 5 seconds return cached results
   - Confidence thresholding — low-confidence extractions are flagged for user review rather than processing incorrectly
-- **Connection Pooling**: 
+- **Connection Pooling**:
   - HTTP connection pooling for external API calls reduces TLS handshake overhead
   - Firebase Admin SDK connection reuse minimizes authentication overhead
 - **Response Optimization**:
@@ -867,29 +912,29 @@ Expense Planner implements numerous performance optimizations to ensure responsi
 
 ### Database Optimizations
 
-- **Denormalization Strategies**: 
+- **Denormalization Strategies**:
   - Storing computed values like tax liability projections to avoid runtime calculations
   - Caching frequently accessed reference data (categories, investment metadata) in documents that change infrequently
   - Storing merchant names alongside category IDs to avoid joins in display queries
-- **Index Management**: 
+- **Index Management**:
   - Monitoring query performance through Firebase Performance Monitoring
   - Adding composite indexes for complex queries identified in production
   - Removing unused indexes to reduce write overhead
-- **Data Retention Policies**: 
+- **Data Retention Policies**:
   - Optional archival of very old transactions (>7 years) to reduce active dataset size
   - Aggregation of data for long-term reporting (monthly summaries instead of daily details)
 
 ### Network Optimizations
 
-- **API Endpoint Design**: 
+- **API Endpoint Design**:
   - Co-location of related data in single endpoints to reduce round trips
   - GraphQL-inspired field selection allowing clients to request only needed data
   - Batch endpoints for related operations (e.g., fetch multiple investment holdings in one call)
-- **Payload Optimization**: 
+- **Payload Optimization**:
   - Protocol Buffers consideration for internal service communication (currently JSON for simplicity)
   - Removal of unnecessary metadata from API responses
   - Use of ISO 8601 timestamps for consistent date/time representation
-- **Connection Management**: 
+- **Connection Management**:
   - Keep-alive connections for improved latency on subsequent requests
   - HTTP/2 support where available for multiplexed requests
 
@@ -906,6 +951,7 @@ The application tracks key performance indicators to ensure optimizations remain
 - **Frame Rate**: Maintaining 60fps for animations and transitions
 
 Continuous performance testing includes:
+
 - Lighthouse CI in the pull request process
 - WebPageTest integration for historical performance tracking
 - Production error monitoring for performance degradation detection
@@ -916,12 +962,12 @@ These optimizations ensure that Expense Planner remains responsive even on mid-t
 ### Deployment-Specific Optimizations
 
 - **Docker Multi-Stage Build**: Minimizes production image size and attack surface
-- **Vercel Serverless Benefits**: 
+- **Vercel Serverless Benefits**:
   - Automatic scaling based on demand
   - Edge execution for reduced latency
   - Zero-configuration scaling
   - Pay-per-use pricing model
-- **Static Asset Delivery**: 
+- **Static Asset Delivery**:
   - Efficient CDN distribution (via Vercel or Docker/nginx)
   - Browser caching through proper cache-control headers
   - Compressed asset delivery (gzip/brotli)
@@ -943,6 +989,7 @@ Expense Planner employs modern development practices to ensure code quality, mai
 Getting started with Expense Planner development is straightforward:
 
 **Environment preparation**
+
 ```bash
 cp .env.example .env
 # Add GEMINI_API_KEY to .env (optional but recommended for receipt scanning)
@@ -950,12 +997,14 @@ cp .env.example .env
 ```
 
 **Dependency installation**
+
 ```bash
 bun install  # or npm install
 # bun is recommended for faster installation and built-in test runner
 ```
 
 **Development server**
+
 ```bash
 bun run dev  # or npm run dev
 # Application available at http://localhost:3000 with hot module replacement
@@ -963,6 +1012,7 @@ bun run dev  # or npm run dev
 ```
 
 **Environment variables for enhanced development**
+
 ```bash
 # REACT_APP_LOG_LEVEL=debug  # More verbose logging
 # REACT_APP_MOCK_API=true    # Use mock API instead of real Firebase (for UI-only work)
@@ -970,6 +1020,7 @@ bun run dev  # or npm run dev
 ```
 
 **Production build**
+
 ```bash
 bun run build  # or npm run build
 # Outputs to dist/ directory with optimized bundles
@@ -977,6 +1028,7 @@ bun run build  # or npm run build
 ```
 
 **Production server**
+
 ```bash
 bun run start  # or npm run start
 # Serves the built application from dist/ directory
@@ -1004,14 +1056,14 @@ Expense Planner maintains high code quality through automated checks and consist
   - Automatic formatting on save via IDE plugins
   - Pre-commit hook ensures all committed code is properly formatted
 
-- **Architectural Consistency**: 
+- **Architectural Consistency**:
   - Established patterns for components (presentational vs container separation where beneficial)
   - Service layer pattern for business logic isolated from UI and data access
   - Custom hooks encapsulating reusable logic (useAuth, useHousehold, useTransactions)
   - Feature-based file organization as described in the Frontend Architecture section
   - Barrel exports (index.js) avoided in favor of explicit imports for better tree-shaking
 
-- **Documentation**: 
+- **Documentation**:
   - Inline comments explaining non-obvious logic and complex algorithms
   - README maintenance with setup instructions, architecture overview, and contribution guidelines
   - JSDoc comments for public APIs and complex functions
@@ -1022,21 +1074,21 @@ Expense Planner maintains high code quality through automated checks and consist
 
 While the current implementation relies on manual testing for UI validation, the architecture is designed to support comprehensive automated testing:
 
-- **Unit Testing**: 
+- **Unit Testing**:
   - Jest or Vitest for testing utility functions, custom hooks, and pure components in isolation
   - Testing library philosophy: test component behavior rather than implementation details
   - Mocking strategies for external dependencies (Firebase, timers, API calls)
   - Snapshot testing for UI components with jest-image-snapshot for visual regression detection
   - Target: 80%+ coverage for business logic and utility functions
 
-- **Integration Testing**: 
+- **Integration Testing**:
   - Supertest for testing API endpoints with a real Express server
   - Testing Firebase Security Rules using the Firebase Rules Unit Testing framework
   - Contract testing between frontend and backend expectations
   - Database integration tests using Firebase Emulator Suite
   - API contract validation with tools like Pact or Dredd
 
-- **End-to-End Testing**: 
+- **End-to-End Testing**:
   - Cypress or Playwright for testing complete user flows
   - Critical paths: user registration, expense logging with receipt scanning, budget setting, household invitation
   - Cross-browser testing (Chrome, Firefox, Safari) for compatibility
@@ -1044,20 +1096,20 @@ While the current implementation relies on manual testing for UI validation, the
   - Accessibility testing with axe-core for WCAG compliance
   - Performance testing with Lighthouse CI for performance budgets
 
-- **Visual Testing**: 
+- **Visual Testing**:
   - Storybook for developing and testing UI components in isolation
   - Visual regression testing with Chromatic or Percy
   - Component prop types validation with TypeScript and PropTypes runtime checks
   - Design token verification to ensure consistent use of colors, spacing, and typography
 
-- **Manual Verification**: 
+- **Manual Verification**:
   - Feature testing through UI interaction for complex workflows that are difficult to automate
   - Exploratory testing to discover edge cases and usability issues
   - Accessibility manual testing with screen readers (VoiceOver, TalkBack, NVDA)
   - Performance manual testing on various device and network combinations
   - Security manual testing for authentication boundaries and authorization checks
 
-- **Testing Infrastructure**: 
+- **Testing Infrastructure**:
   - Firebase Emulator Suite for local testing of Firestore, Auth, and Functions
   - Mock Service Worker (MSW) for intercepting and mocking network requests
   - Test data factories for generating consistent test objects
@@ -1127,7 +1179,7 @@ The CI/CD pipeline ensures code quality and enables reliable releases:
 
 Expense Planner follows several team practices to maintain velocity and quality:
 
-- **Branching Strategy**: 
+- **Branching Strategy**:
   - Main branch always deployable
   - Feature branches for individual work items
   - Release branches for versioned releases (optional)
@@ -1173,28 +1225,28 @@ Expense Planner follows several team practices to maintain velocity and quality:
 
 Investments in developer experience pay dividends in team productivity and code quality:
 
-- **Editor Configuration**: 
+- **Editor Configuration**:
   - Recommended VS Code settings and extensions in .vscode/
   - Automatic formatting on save
   - Import sorting with ESLint plugin
   - Code spell checking for documentation and strings
   - TODO comment highlighting for tracking incomplete work
 
-- **Debugging Tools**: 
+- **Debugging Tools**:
   - React DevTools for component hierarchy and state inspection
   - Redux DevTools equivalent for context values (if using state tracking libraries)
   - Firebase Emulator Suite UI for inspecting local data
   - Network inspection for API call monitoring
   - Performance profiling with Chrome DevTools
 
-- **Local Development Enhancements**: 
+- **Local Development Enhancements**:
   - Hot module replacement for instant UI feedback
   - Error boundaries with helpful error messages during development
   - Development-only feature flags for testing incomplete work
   - Storybook for isolated component development and testing
   - API mocking for frontend development independent of backend
 
-- **Onboarding and Knowledge Sharing**: 
+- **Onboarding and Knowledge Sharing**:
   - Comprehensive onboarding documentation in CONTRIBUTING.md
   - Architecture decision records for historical context
   - Codeownership setup for automatic reviewer assignment
@@ -1210,6 +1262,7 @@ Expense Planner's architecture reflects thoughtful consideration of various tech
 ### Database Selection: Firebase Firestore
 
 **Chosen For**:
+
 - Seamless authentication integration
 - Real-time capabilities and offline persistence
 - Automatic scaling with usage patterns
@@ -1217,6 +1270,7 @@ Expense Planner's architecture reflects thoughtful consideration of various tech
 - Cross-platform consistency (web foundation for potential mobile expansion)
 
 **Trade-offs Considered**:
+
 - Less structured querying compared to SQL solutions
 - Potential cost considerations at very large scale
 - Vendor lock-in to Google Cloud Platform
@@ -1225,20 +1279,23 @@ Expense Planner's architecture reflects thoughtful consideration of various tech
 ### State Management: Context API vs. External Libraries
 
 **Chosen Approach**:
+
 - React Context for global state (authentication, theme)
 - Local state for component-specific data
 - Custom caching layer for Firestore optimization
 
 **Alternative Considered**:
+
 - Redux, Zustand, or other state management libraries
 
 **Trade-offs**:
-- **Benefits of Chosen Approach**: 
+
+- **Benefits of Chosen Approach**:
   - Reduced bundle size (no additional libraries)
   - Familiar React patterns
   - Sufficient for application's state complexity
   - Leverages built-in React capabilities
-- **Considered Drawbacks**: 
+- **Considered Drawbacks**:
   - Potential for excessive re-renders if not optimized
   - Less powerful than dedicated state management libraries for extremely complex state
   - Requires careful separation of concerns
@@ -1248,16 +1305,19 @@ Expense Planner's architecture reflects thoughtful consideration of various tech
 ### Receipt Scanning: Dual-Path Implementation
 
 **Chosen Approach**:
+
 - Client-side direct API call (when API key available)
 - Server-side proxy endpoint (Express/Vercel function)
 - Multiple Gemini model fallbacks in both paths
 - Rate limiting specifically for AI operations
 
 **Alternative Considered**:
+
 - Pure client-side implementation
 - Pure server-side implementation
 
 **Trade-offs**:
+
 - **Benefits of Chosen Approach**:
   - Maximum deployment flexibility (works on static hosts, servers, and serverless platforms)
   - Resilience against service outages (fallback paths)
@@ -1332,39 +1392,39 @@ Expense Planner distinguishes itself from existing personal finance tools throug
 
 ### Versus Traditional Spreadsheet-Based Approaches
 
-| Feature | Spreadsheets | Expense Planner |
-|---------|--------------|-----------------|
-| Data Entry | Manual, error-prone | AI-powered receipt scanning + manual entry |
-| Collaboration | File sharing with version conflicts | Real-time synchronized multi-user access |
-| Automation | Requires complex formulas | Built-in recurring transactions, budget alerts |
-| Visualization | Manual chart creation | Automatic charts and dashboards |
-| Accessibility | Device-specific file access | Cloud-based, accessible from anywhere |
-| Security | Password-protected files (limited) | Firebase Auth with enterprise-grade security |
+| Feature       | Spreadsheets                        | Expense Planner                                |
+| ------------- | ----------------------------------- | ---------------------------------------------- |
+| Data Entry    | Manual, error-prone                 | AI-powered receipt scanning + manual entry     |
+| Collaboration | File sharing with version conflicts | Real-time synchronized multi-user access       |
+| Automation    | Requires complex formulas           | Built-in recurring transactions, budget alerts |
+| Visualization | Manual chart creation               | Automatic charts and dashboards                |
+| Accessibility | Device-specific file access         | Cloud-based, accessible from anywhere          |
+| Security      | Password-protected files (limited)  | Firebase Auth with enterprise-grade security   |
 
 ### Versus Popular Personal Finance Apps
 
-| Feature | Mint/YNAB/etc. | Expense Planner |
-|---------|----------------|-----------------|
-| Receipt Scanning | Basic OCR, often premium | Advanced AI with Gemini, free tier available |
-| Household Support | Limited or premium tier | Native multi-user with role-based access |
-| Deployment Flexibility | SaaS-only | Self-hostable (Docker/Node.js) or serverless (Vercel) |
-| Data Ownership | Provider-controlled | User-controlled via personal Firebase project |
-| Customization | Limited to provider features | Extensible architecture for custom features |
-| Cost Model | Subscription-based | Free tier available; pay only for Firebase/usage |
-| Offline Capabilities | Variable | Firestore-based offline persistence |
-| Tax Features | Basic categorization | Old vs. new regime comparison with recommendations |
+| Feature                | Mint/YNAB/etc.               | Expense Planner                                       |
+| ---------------------- | ---------------------------- | ----------------------------------------------------- |
+| Receipt Scanning       | Basic OCR, often premium     | Advanced AI with Gemini, free tier available          |
+| Household Support      | Limited or premium tier      | Native multi-user with role-based access              |
+| Deployment Flexibility | SaaS-only                    | Self-hostable (Docker/Node.js) or serverless (Vercel) |
+| Data Ownership         | Provider-controlled          | User-controlled via personal Firebase project         |
+| Customization          | Limited to provider features | Extensible architecture for custom features           |
+| Cost Model             | Subscription-based           | Free tier available; pay only for Firebase/usage      |
+| Offline Capabilities   | Variable                     | Firestore-based offline persistence                   |
+| Tax Features           | Basic categorization         | Old vs. new regime comparison with recommendations    |
 
 ### Versus Enterprise Financial Software
 
-| Feature | QuickBooks/etc. | Expense Planner |
-|---------|-----------------|-----------------|
-| Target Audience | Primarily business | Personal/family finance |
-| Setup Complexity | Often requires training | Intuitive interface, minimal learning curve |
-| Cost | Subscription/tiered pricing | Free core features; optional premium services |
-| Receipt Processing | Basic scanning | AI-powered contextual understanding |
-| Investment Tracking | Often basic or absent | Comprehensive portfolio management |
-| Goal Planning | Limited | Sophisticated goal tracking with projections |
-| Mobile Experience | Often secondary priority | Responsive design with mobile-first approach |
+| Feature             | QuickBooks/etc.             | Expense Planner                               |
+| ------------------- | --------------------------- | --------------------------------------------- |
+| Target Audience     | Primarily business          | Personal/family finance                       |
+| Setup Complexity    | Often requires training     | Intuitive interface, minimal learning curve   |
+| Cost                | Subscription/tiered pricing | Free core features; optional premium services |
+| Receipt Processing  | Basic scanning              | AI-powered contextual understanding           |
+| Investment Tracking | Often basic or absent       | Comprehensive portfolio management            |
+| Goal Planning       | Limited                     | Sophisticated goal tracking with projections  |
+| Mobile Experience   | Often secondary priority    | Responsive design with mobile-first approach  |
 
 ## Future Enhancement Roadmap
 
@@ -1548,6 +1608,6 @@ As we look to the future of financial technology, Expense Planner stands as a te
 
 ---
 
-*This comprehensive guide covers Expense Planner version current as of September 2026. For the latest updates, feature releases, and community contributions, please visit the official repository.*
+_This comprehensive guide covers Expense Planner version current as of September 2026. For the latest updates, feature releases, and community contributions, please visit the official repository._
 
-*All images and diagrams referenced in this article are available in the medium-article/assets/ directory of the Expense Planner repository.*
+_All images and diagrams referenced in this article are available in the medium-article/assets/ directory of the Expense Planner repository._
