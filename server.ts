@@ -3,6 +3,12 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+import {
+  handleTelegramMessage,
+  setTelegramWebhook,
+  verifyTelegramWebhookSecret,
+  type TelegramUpdate,
+} from "./src/lib/telegram";
 
 async function startServer() {
   const app = express();
@@ -13,6 +19,56 @@ async function startServer() {
   // API routes FIRST
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", environment: "React/Express/Firebase" });
+  });
+
+  // Telegram Webhook Handler (POST)
+  app.post("/api/telegram/webhook", async (req, res) => {
+    try {
+      const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET;
+      const headerSecret = req.headers["x-telegram-bot-api-secret-token"] as string | undefined;
+
+      if (secretToken && !verifyTelegramWebhookSecret(secretToken, headerSecret)) {
+        console.warn("Invalid Telegram webhook secret");
+        return res.sendStatus(401);
+      }
+
+      const update = req.body as TelegramUpdate;
+
+      if (update.message) {
+        await handleTelegramMessage(
+          update.message,
+          process.env.TELEGRAM_BOT_TOKEN || "",
+          process.env.GEMINI_API_KEY || ""
+        );
+      }
+
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Telegram webhook error:", error);
+      res.sendStatus(500);
+    }
+  });
+
+  // Telegram Webhook Setup Endpoint (call once to register)
+  app.post("/api/telegram/setup-webhook", async (req, res) => {
+    try {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+
+      if (!botToken || !webhookUrl) {
+        return res.status(400).json({ error: "TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_URL required" });
+      }
+
+      const success = await setTelegramWebhook(botToken, webhookUrl);
+      if (success) {
+        res.json({ success: true, message: "Webhook registered successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to register webhook" });
+      }
+    } catch (error: any) {
+      console.error("Telegram setup webhook error:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/scan-receipt", async (req, res) => {

@@ -56,7 +56,7 @@ export interface Transaction {
   date: string; // YYYY-MM-DD
   note: string;
   payment_mode: "UPI" | "Card" | "Cash" | "Netbanking" | "Other" | string;
-  source: "manual" | "recurring" | "csv_import";
+  source: "manual" | "recurring" | "csv_import" | "telegram" | "telegram_receipt";
   created_at?: Date;
 }
 
