@@ -2,7 +2,7 @@
   "name": "Expense Planner Bot",
   "nodes": [
     {
-      "id": "node-01-oioea9",
+      "id": "node-01-1zmd2t",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.5,
@@ -10,7 +10,7 @@
         -80,
         340
       ],
-      "webhookId": "node-02-it21r2",
+      "webhookId": "node-02-r4gs1p",
       "parameters": {
         "updates": [
           "message",
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "node-03-jkglgf",
+      "id": "node-03-jpg09m",
       "name": "Classify Update",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -32,11 +32,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Normalize the incoming Telegram update into a single routing payload.\nconst update = items[0].json;\n// Inline-keyboard button presses arrive as callback_query updates\nconst cbq = update.callback_query;\nif (cbq) {\n  const chatId = cbq.message && cbq.message.chat ? cbq.message.chat.id : null;\n  const cUserId = 'telegram_' + (cbq.from ? cbq.from.id : '');\n  if (chatId === null) return [];\n  const data = String(cbq.data || '');\n  const parts = data.split(':'); // e.g. scan:save:<id>\n  return [{ json: {\n    chatId,\n    userId: cUserId,\n    intent: 'callback',\n    cbAction: parts[1] || '',\n    cbId: parts[2] || '',\n    queryId: String(cbq.id || ''),\n    photoFileId: '',\n    today: new Date().toISOString().split('T')[0],\n  } }];\n}\nconst msg = update.message || update.edited_message;\nif (!msg || !msg.from || !msg.chat) return [];\n\nconst chatId = msg.chat.id;\nconst tgUserId = msg.from.id;\nconst userId = 'telegram_' + tgUserId;\n// Strip invisible Unicode chars (zero-width spaces, directional marks) that\n// copy-paste can inject alongside invite codes - they silently break regex anchors.\nconst text = (msg.text || msg.caption || '').replace(/[\\u200B-\\u200F\\u202A-\\u202E\\u2060\\uFEFF]/g, '').trim();\n// Photo/document detection from the raw update (the trigger's own download\n// is DISABLED: its imageSize picker silently falls back to the ~90px thumbnail\n// when Telegram sends fewer sizes, which makes receipts illegible).\nconst photoSizes = Array.isArray(msg.photo) ? msg.photo : [];\nconst imgDoc = (msg.document && String(msg.document.mime_type || '').startsWith('image/')) ? msg.document : null;\nlet photoFileId = '';\nif (photoSizes.length > 0) {\n  const largest = photoSizes.reduce((a, b) => ((b.width || 0) * (b.height || 0) > (a.width || 0) * (a.height || 0) ? b : a));\n  photoFileId = String(largest.file_id || '');\n} else if (imgDoc) {\n  photoFileId = String(imgDoc.file_id || '');\n}\n// Album detection: Telegram sends each album photo as its own message with a shared media_group_id\nconst mediaGroupId = String(msg.media_group_id || '');\n\nconst today = new Date().toISOString().split('T')[0];\nconst month = today.slice(0, 7);\nconst monthStart = month + '-01';\nconst parts = month.split('-').map(Number);\nconst monthEnd = month + '-' + String(new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate()).padStart(2, '0');\n\nconst HELP_TEXT = '\\u{1F916} <b>Expense Planner Bot</b>\\n\\n<b>Log</b>\\n/spent 250 groceries [note] \\u2014 log an expense\\n\\u{1F4F8} send a receipt photo \\u2014 AI auto-logs it\\n/earned 50000 [note] \\u2014 log income\\n/undo \\u2014 delete my last entry\\n\\n<b>View</b>\\n/summary [YYYY-MM] \\u2014 spend + income breakdown\\n/recent \\u2014 my last 10 entries\\n/budgets \\u2014 budget vs spend this month\\n/goals \\u2014 savings goals with progress\\n/loans \\u2014 loans and EMI info\\n/recurrings \\u2014 recurring rules\\n/investments \\u2014 investment accounts\\n/members \\u2014 household members\\n/categories \\u2014 valid category names\\n/export \\u2014 CSV of this month\\n\\n<b>Manage</b>\\n/budget dining out 2000 \\u2014 set monthly budget\\n/goal laptop 80000 2027-06-01 \\u2014 new savings goal\\n/contribute laptop 5000 \\u2014 add to a goal\\n/recurring 1500 monthly groceries \\u2014 new recurring rule\\n/loan 500000 9.5 60 home \\u2014 new loan with schedule\\n/join [invite code] \\u2014 link to your household (code from the website Family tab)\\n/tax \\u2014 tax planner info\\n/help \\u2014 this message';\nconst FALLBACK_TEXT = '\\u{1F914} Unrecognized command. Send /help to see everything I can do.';\nconst TAX_HINT = '\\u{1F4DA} The tax planner (old vs new regime, HRA, 80C/80D, advance tax) needs many inputs and works best on the website: open the Taxes tab there. Bot commands cover everything else \\u2014 /help for the list.';\n\nconst EXPENSE = /^\\/(?:spent|spend|paid|bought|purchase)\\s+(\\d+(?:\\.\\d+)?)\\s+(.+)$/i;\nconst INCOME = /^\\/(?:received|got|earned|income|salary)\\s+(\\d+(?:\\.\\d+)?)\\s*(.*)$/i;\nconst SUMMARY = /^\\/summary(?:\\s+(\\d{4}-(?:0[1-9]|1[0-2])))?$/i;\nconst UNDO = /^\\/undo$/i;\nconst RECENT = /^\\/(?:recent|list)$/i;\nconst CATEGORIES = /^\\/(?:categories|cats)$/i;\nconst BUDGETS_LIST = /^\\/budgets$/i;\nconst BUDGET_SET = /^\\/budget\\s+(.+?)\\s+(\\d+(?:\\.\\d+)?)\\s*$/i;\nconst GOALS_LIST = /^\\/goals$/i;\nconst GOAL_NEW = /^\\/goal\\s+(.+)$/i;\nconst CONTRIBUTE = /^\\/(?:contribute|save)\\s+(.+)$/i;\nconst RECURRINGS_LIST = /^\\/(?:recurrings|rules)$/i;\nconst RECURRING_NEW = /^\\/(?:recurring|rule)\\s+(\\d+(?:\\.\\d+)?)\\s+(monthly|quarterly|yearly)\\s+(\\S+)(?:\\s+(.*))?$/i;\nconst LOANS_LIST = /^\\/loans$/i;\nconst LOAN_NEW = /^\\/loan\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+)(?:\\s+(.*))?$/i;\nconst MEMBERS = /^\\/(?:members|family)$/i;\nconst INVESTMENTS = /^\\/(?:investments|inv)$/i;\nconst EXPORT = /^\\/(?:export|csv)$/i;\nconst TAX = /^\\/tax$/i;\nconst JOIN = /^\\/join(?:@\\w+)?\\s+([A-Za-z0-9]{3,20})/i;\nconst HELP = /^\\/(help|start)$/i;\nconst DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nconst out = {\n  chatId, tgUserId, userId, today, month, monthStart, monthEnd,\n  tgUsername: msg.from.username || '',\n  intent: 'unknown', replyText: FALLBACK_TEXT,\n};\n\nconst e = text.match(EXPENSE);\nif (e) {\n  const amount = parseFloat(e[1]);\n  const rest = e[2].trim();\n  const rm = rest.match(/^(\\S+)(?:\\s+(.*))?$/);\n  out.intent = 'expense_text';\n  out.amount = amount;\n  out.rawCategory = rm ? rm[1] : rest;\n  out.note = rm && rm[2] ? rm[2] : '';\n  out.date = today;\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst i = text.match(INCOME);\nif (i) {\n  out.intent = 'income_text';\n  out.amount = parseFloat(i[1]);\n  out.note = (i[2] || '').trim() || 'Income';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst s = text.match(SUMMARY);\nif (s) {\n  out.intent = 'summary';\n  if (s[1]) {\n    const mp = s[1].split('-').map(Number);\n    out.month = s[1];\n    out.monthStart = s[1] + '-01';\n    out.monthEnd = s[1] + '-' + String(new Date(Date.UTC(mp[0], mp[1], 0)).getUTCDate()).padStart(2, '0');\n  }\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst j = text.match(JOIN);\nif (j) {\n  out.intent = 'join';\n  out.inviteCode = j[1].toUpperCase().replace(/[^A-Z0-9]/g, '');\n  if (out.inviteCode) return [{ json: out, binary: items[0].binary }];\n}\n\n// ---- Feature commands ----\nif (UNDO.test(text)) { out.intent = 'undo'; return [{ json: out, binary: items[0].binary }]; }\nif (RECENT.test(text)) { out.intent = 'recent'; return [{ json: out, binary: items[0].binary }]; }\nif (CATEGORIES.test(text)) { out.intent = 'categories_list'; return [{ json: out, binary: items[0].binary }]; }\nif (BUDGETS_LIST.test(text)) { out.intent = 'budgets_list'; return [{ json: out, binary: items[0].binary }]; }\nif (GOALS_LIST.test(text)) { out.intent = 'goals_list'; return [{ json: out, binary: items[0].binary }]; }\nif (RECURRINGS_LIST.test(text)) { out.intent = 'recurrings_list'; return [{ json: out, binary: items[0].binary }]; }\nif (LOANS_LIST.test(text)) { out.intent = 'loans_list'; return [{ json: out, binary: items[0].binary }]; }\nif (MEMBERS.test(text)) { out.intent = 'members'; return [{ json: out, binary: items[0].binary }]; }\nif (INVESTMENTS.test(text)) { out.intent = 'investments'; return [{ json: out, binary: items[0].binary }]; }\nif (EXPORT.test(text)) { out.intent = 'export_csv'; return [{ json: out, binary: items[0].binary }]; }\nif (TAX.test(text)) { out.intent = 'help'; out.replyText = TAX_HINT; return [{ json: out, binary: items[0].binary }]; }\n\nconst b = text.match(BUDGET_SET);\nif (b) {\n  out.intent = 'budget_set';\n  out.budgetCategory = b[1].trim();\n  out.budgetAmount = parseFloat(b[2]);\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst g = text.match(GOAL_NEW);\nif (g) {\n  const tokens = g[1].trim().split(/\\s+/);\n  let targetDate = '';\n  if (tokens.length >= 3 && DATE_RE.test(tokens[tokens.length - 1])) targetDate = tokens.pop();\n  const amount = parseFloat(tokens[tokens.length - 1]);\n  if (!isNaN(amount) && tokens.length >= 2) {\n    tokens.pop();\n    out.intent = 'goal_new';\n    out.goalName = tokens.join(' ');\n    out.goalAmount = amount;\n    out.goalDate = targetDate || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0];\n    return [{ json: out, binary: items[0].binary }];\n  }\n  out.intent = 'help';\n  out.replyText = 'Usage: /goal [name] [amount] [YYYY-MM-DD]\\nExample: /goal laptop 80000 2027-06-01';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst ct = text.match(CONTRIBUTE);\nif (ct) {\n  const tokens = ct[1].trim().split(/\\s+/);\n  const amount = parseFloat(tokens[tokens.length - 1]);\n  if (!isNaN(amount) && tokens.length >= 2) {\n    tokens.pop();\n    out.intent = 'contribute';\n    out.goalMatch = tokens.join(' ');\n    out.goalAmount = amount;\n    return [{ json: out, binary: items[0].binary }];\n  }\n  out.intent = 'help';\n  out.replyText = 'Usage: /contribute [goal name] [amount]\\nExample: /contribute laptop 5000';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst rr = text.match(RECURRING_NEW);\nif (rr) {\n  out.intent = 'recurring_new';\n  out.recAmount = parseFloat(rr[1]);\n  out.recFreq = rr[2].toLowerCase();\n  out.recCategory = rr[3];\n  out.recLabel = (rr[4] || '').trim();\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst ln = text.match(LOAN_NEW);\nif (ln) {\n  out.intent = 'loan_new';\n  out.loanPrincipal = parseFloat(ln[1]);\n  out.loanRate = parseFloat(ln[2]);\n  out.loanMonths = parseInt(ln[3], 10);\n  out.loanLabel = (ln[4] || 'Loan').trim();\n  return [{ json: out, binary: items[0].binary }];\n}\n\nif (HELP.test(text)) {\n  out.intent = 'help';\n  out.replyText = HELP_TEXT;\n  return [{ json: out, binary: items[0].binary }];\n}\n\nif (photoFileId) {\n  out.intent = 'photo';\n  out.photoFileId = photoFileId;\n  out.mediaGroupId = mediaGroupId;\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// New bot commands: /edit <field> <value>, /ask <question>, /setup-menu\nconst ed = text.match(/^\\/edit\\s+(amount|note|category|date)\\s+(.+)$/i);\nif (ed) {\n  out.intent = 'edit';\n  out.editField = ed[1].toLowerCase();\n  out.editValue = ed[2].trim();\n  return [{ json: out, binary: items[0].binary }];\n}\nconst ak = text.match(/^\\/ask\\s+(.+)$/i);\nif (ak) {\n  out.intent = 'ask';\n  out.askQuestion = ak[1].trim();\n  return [{ json: out, binary: items[0].binary }];\n}\nif (/^\\/setup-menu$/i.test(text)) {\n  out.intent = 'setup_menu';\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// Natural-language expense logging: plain (non-slash) short text goes to\n// the Gemini parser instead of the fallback message.\nif (!text.startsWith('/') && text.length > 2 && text.length <= 120) {\n  out.intent = 'nl_parse';\n  out.nlText = text;\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// Unrecognized slash-command: echo the raw text (escaped) so invisible\n// characters and formatting become visible for debugging.\nif (text.startsWith('/')) {\n  out.replyText = FALLBACK_TEXT + '\\n\\n(received: ' + JSON.stringify(text) + ')';\n}\nreturn [{ json: out, binary: items[0].binary }];"
+        "jsCode": "// Normalize the incoming Telegram update into a single routing payload.\nconst update = items[0].json;\n// Inline-keyboard button presses arrive as callback_query updates\nconst cbq = update.callback_query;\nif (cbq) {\n  const chatId = cbq.message && cbq.message.chat ? cbq.message.chat.id : null;\n  const cUserId = 'telegram_' + (cbq.from ? cbq.from.id : '');\n  if (chatId === null) return [];\n  const data = String(cbq.data || '');\n  const parts = data.split(':'); // e.g. scan:save:<id>\n  return [{ json: {\n    chatId,\n    userId: cUserId,\n    intent: 'callback',\n    cbAction: parts[1] || '',\n    cbId: parts[2] || '',\n    queryId: String(cbq.id || ''),\n    photoFileId: '',\n    today: new Date().toISOString().split('T')[0],\n  } }];\n}\nconst msg = update.message || update.edited_message;\nif (!msg || !msg.from || !msg.chat) return [];\n\nconst chatId = msg.chat.id;\nconst tgUserId = msg.from.id;\nconst userId = 'telegram_' + tgUserId;\n// Strip invisible Unicode chars (zero-width spaces, directional marks) that\n// copy-paste can inject alongside invite codes - they silently break regex anchors.\nconst text = (msg.text || msg.caption || '').replace(/[\\u200B-\\u200F\\u202A-\\u202E\\u2060\\uFEFF]/g, '').trim();\n// Photo/document detection from the raw update (the trigger's own download\n// is DISABLED: its imageSize picker silently falls back to the ~90px thumbnail\n// when Telegram sends fewer sizes, which makes receipts illegible).\nconst photoSizes = Array.isArray(msg.photo) ? msg.photo : [];\nconst imgDoc = (msg.document && String(msg.document.mime_type || '').startsWith('image/')) ? msg.document : null;\nlet photoFileId = '';\nif (photoSizes.length > 0) {\n  const largest = photoSizes.reduce((a, b) => ((b.width || 0) * (b.height || 0) > (a.width || 0) * (a.height || 0) ? b : a));\n  photoFileId = String(largest.file_id || '');\n} else if (imgDoc) {\n  photoFileId = String(imgDoc.file_id || '');\n}\n// Album detection: Telegram sends each album photo as its own message with a shared media_group_id\nconst mediaGroupId = String(msg.media_group_id || '');\n\nconst today = new Date().toISOString().split('T')[0];\nconst month = today.slice(0, 7);\nconst monthStart = month + '-01';\nconst parts = month.split('-').map(Number);\nconst monthEnd = month + '-' + String(new Date(Date.UTC(parts[0], parts[1], 0)).getUTCDate()).padStart(2, '0');\n\nconst HELP_TEXT = '\\u{1F916} <b>Expense Planner Bot</b>\\n\\n<b>Log</b>\\n/spent 250 groceries [note] \\u2014 log an expense\\n\\u{1F4F8} send a receipt photo \\u2014 AI auto-logs it\\n/earned 50000 [note] \\u2014 log income\\n/undo \\u2014 delete my last entry\\n\\n<b>View</b>\\n/summary [YYYY-MM] \\u2014 spend + income breakdown\\n/recent \\u2014 my last 10 entries\\n/budgets \\u2014 budget vs spend this month\\n/goals \\u2014 savings goals with progress\\n/loans \\u2014 loans and EMI info\\n/recurrings \\u2014 recurring rules\\n/investments \\u2014 investment accounts\\n/members \\u2014 household members\\n/categories \\u2014 valid category names\\n/export \\u2014 CSV of this month\\n\\n<b>Manage</b>\\n/budget dining out 2000 \\u2014 set monthly budget\\n/goal laptop 80000 2027-06-01 \\u2014 new savings goal\\n/contribute laptop 5000 \\u2014 add to a goal\\n/recurring 1500 monthly groceries \\u2014 new recurring rule\\n/loan 500000 9.5 60 home \\u2014 new loan with schedule\\n/join [invite code] \\u2014 link to your household (code from the website Family tab)\\n/tax \\u2014 tax planner info\\n/help \\u2014 this message';\nconst FALLBACK_TEXT = '\\u{1F914} Unrecognized command. Send /help to see everything I can do.';\nconst TAX_HINT = '\\u{1F4DA} The tax planner (old vs new regime, HRA, 80C/80D, advance tax) needs many inputs and works best on the website: open the Taxes tab there. Bot commands cover everything else \\u2014 /help for the list.';\n\nconst EXPENSE = /^\\/(?:spent|spend|paid|bought|purchase)\\s+(\\d+(?:\\.\\d+)?)\\s+(.+)$/i;\nconst INCOME = /^\\/(?:received|got|earned|income|salary)\\s+(\\d+(?:\\.\\d+)?)\\s*(.*)$/i;\nconst SUMMARY = /^\\/summary(?:\\s+(\\d{4}-(?:0[1-9]|1[0-2])))?$/i;\nconst UNDO = /^\\/undo$/i;\nconst RECENT = /^\\/(?:recent|list)$/i;\nconst CATEGORIES = /^\\/(?:categories|cats)$/i;\nconst BUDGETS_LIST = /^\\/budgets$/i;\nconst BUDGET_SET = /^\\/budget\\s+(.+?)\\s+(\\d+(?:\\.\\d+)?)\\s*$/i;\nconst GOALS_LIST = /^\\/goals$/i;\nconst GOAL_NEW = /^\\/goal\\s+(.+)$/i;\nconst CONTRIBUTE = /^\\/(?:contribute|save)\\s+(.+)$/i;\nconst RECURRINGS_LIST = /^\\/(?:recurrings|rules)$/i;\nconst RECURRING_NEW = /^\\/(?:recurring|rule)\\s+(\\d+(?:\\.\\d+)?)\\s+(monthly|quarterly|yearly)\\s+(\\S+)(?:\\s+(.*))?$/i;\nconst LOANS_LIST = /^\\/loans$/i;\nconst LOAN_NEW = /^\\/loan\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+)(?:\\s+(.*))?$/i;\nconst MEMBERS = /^\\/(?:members|family)$/i;\nconst INVESTMENTS = /^\\/(?:investments|inv)$/i;\nconst EXPORT = /^\\/(?:export|csv)$/i;\nconst TAX = /^\\/tax$/i;\nconst JOIN = /^\\/join(?:@\\w+)?\\s+([A-Za-z0-9]{3,20})/i;\nconst HELP = /^\\/(help|start)$/i;\nconst DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/;\n\nconst out = {\n  chatId, tgUserId, userId, today, month, monthStart, monthEnd,\n  tgUsername: msg.from.username || '',\n  intent: 'unknown', replyText: FALLBACK_TEXT,\n};\n\nconst e = text.match(EXPENSE);\nif (e) {\n  const amount = parseFloat(e[1]);\n  const rest = e[2].trim();\n  const rm = rest.match(/^(\\S+)(?:\\s+(.*))?$/);\n  out.intent = 'expense_text';\n  out.amount = amount;\n  out.rawCategory = rm ? rm[1] : rest;\n  out.note = rm && rm[2] ? rm[2] : '';\n  out.date = today;\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst i = text.match(INCOME);\nif (i) {\n  out.intent = 'income_text';\n  out.amount = parseFloat(i[1]);\n  out.note = (i[2] || '').trim() || 'Income';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst s = text.match(SUMMARY);\nif (s) {\n  out.intent = 'summary';\n  if (s[1]) {\n    const mp = s[1].split('-').map(Number);\n    out.month = s[1];\n    out.monthStart = s[1] + '-01';\n    out.monthEnd = s[1] + '-' + String(new Date(Date.UTC(mp[0], mp[1], 0)).getUTCDate()).padStart(2, '0');\n  }\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst j = text.match(JOIN);\nif (j) {\n  out.intent = 'join';\n  out.inviteCode = j[1].toUpperCase().replace(/[^A-Z0-9]/g, '');\n  if (out.inviteCode) return [{ json: out, binary: items[0].binary }];\n}\n\n// ---- Feature commands ----\nif (UNDO.test(text)) { out.intent = 'undo'; return [{ json: out, binary: items[0].binary }]; }\nif (RECENT.test(text)) { out.intent = 'recent'; return [{ json: out, binary: items[0].binary }]; }\nif (CATEGORIES.test(text)) { out.intent = 'categories_list'; return [{ json: out, binary: items[0].binary }]; }\nif (BUDGETS_LIST.test(text)) { out.intent = 'budgets_list'; return [{ json: out, binary: items[0].binary }]; }\nif (GOALS_LIST.test(text)) { out.intent = 'goals_list'; return [{ json: out, binary: items[0].binary }]; }\nif (RECURRINGS_LIST.test(text)) { out.intent = 'recurrings_list'; return [{ json: out, binary: items[0].binary }]; }\nif (LOANS_LIST.test(text)) { out.intent = 'loans_list'; return [{ json: out, binary: items[0].binary }]; }\nif (MEMBERS.test(text)) { out.intent = 'members'; return [{ json: out, binary: items[0].binary }]; }\nif (INVESTMENTS.test(text)) { out.intent = 'investments'; return [{ json: out, binary: items[0].binary }]; }\nif (EXPORT.test(text)) { out.intent = 'export_csv'; return [{ json: out, binary: items[0].binary }]; }\nif (TAX.test(text)) { out.intent = 'help'; out.replyText = TAX_HINT; return [{ json: out, binary: items[0].binary }]; }\n\nconst b = text.match(BUDGET_SET);\nif (b) {\n  out.intent = 'budget_set';\n  out.budgetCategory = b[1].trim();\n  out.budgetAmount = parseFloat(b[2]);\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst g = text.match(GOAL_NEW);\nif (g) {\n  const tokens = g[1].trim().split(/\\s+/);\n  let targetDate = '';\n  if (tokens.length >= 3 && DATE_RE.test(tokens[tokens.length - 1])) targetDate = tokens.pop();\n  const amount = parseFloat(tokens[tokens.length - 1]);\n  if (!isNaN(amount) && tokens.length >= 2) {\n    tokens.pop();\n    out.intent = 'goal_new';\n    out.goalName = tokens.join(' ');\n    out.goalAmount = amount;\n    out.goalDate = targetDate || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split('T')[0];\n    return [{ json: out, binary: items[0].binary }];\n  }\n  out.intent = 'help';\n  out.replyText = 'Usage: /goal [name] [amount] [YYYY-MM-DD]\\nExample: /goal laptop 80000 2027-06-01';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst ct = text.match(CONTRIBUTE);\nif (ct) {\n  const tokens = ct[1].trim().split(/\\s+/);\n  const amount = parseFloat(tokens[tokens.length - 1]);\n  if (!isNaN(amount) && tokens.length >= 2) {\n    tokens.pop();\n    out.intent = 'contribute';\n    out.goalMatch = tokens.join(' ');\n    out.goalAmount = amount;\n    return [{ json: out, binary: items[0].binary }];\n  }\n  out.intent = 'help';\n  out.replyText = 'Usage: /contribute [goal name] [amount]\\nExample: /contribute laptop 5000';\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst rr = text.match(RECURRING_NEW);\nif (rr) {\n  out.intent = 'recurring_new';\n  out.recAmount = parseFloat(rr[1]);\n  out.recFreq = rr[2].toLowerCase();\n  out.recCategory = rr[3];\n  out.recLabel = (rr[4] || '').trim();\n  return [{ json: out, binary: items[0].binary }];\n}\n\nconst ln = text.match(LOAN_NEW);\nif (ln) {\n  out.intent = 'loan_new';\n  out.loanPrincipal = parseFloat(ln[1]);\n  out.loanRate = parseFloat(ln[2]);\n  out.loanMonths = parseInt(ln[3], 10);\n  out.loanLabel = (ln[4] || 'Loan').trim();\n  return [{ json: out, binary: items[0].binary }];\n}\n\nif (HELP.test(text)) {\n  out.intent = 'help';\n  out.replyText = HELP_TEXT;\n  return [{ json: out, binary: items[0].binary }];\n}\n\nif (photoFileId) {\n  out.intent = 'photo';\n  out.photoFileId = photoFileId;\n  out.mediaGroupId = mediaGroupId;\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// New bot commands: /edit <field> <value>, /ask <question>, /setup-menu\nconst ed = text.match(/^\\/edit\\s+(amount|note|category|date)\\s+(.+)$/i);\nif (ed) {\n  out.intent = 'edit';\n  out.editField = ed[1].toLowerCase();\n  out.editValue = ed[2].trim();\n  return [{ json: out, binary: items[0].binary }];\n}\nconst ak = text.match(/^\\/ask\\s+(.+)$/i);\nif (ak) {\n  out.intent = 'ask';\n  out.askQuestion = ak[1].trim();\n  return [{ json: out, binary: items[0].binary }];\n}\nif (/^\\/setup-menu$/i.test(text)) {\n  out.intent = 'setup_menu';\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// Confirm/discard words confirm the most recent pending receipt scan (the\n// same action as tapping the inline Save/Discard buttons). Routed through\n// the callback intent - Read Callback resolves the user's latest pending\n// scan from workflow static data.\nconst confirmWord = text.match(/^\\/?\\s*(save|saved|confirm|yes|yeah|yep|ok|keep|store)\\b/i);\nconst discardWord = text.match(/^\\/?\\s*(discard|drop|delete|no|nope|cancel|skip|abort)\\b/i);\nif (confirmWord || discardWord) {\n  out.intent = 'callback';\n  out.cbAction = confirmWord ? 'save' : 'discard';\n  out.cbId = ''; // resolved per-user in Read Callback\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// Natural-language expense logging: plain (non-slash) short text goes to\n// the Gemini parser instead of the fallback message.\nif (!text.startsWith('/') && text.length > 2 && text.length <= 120) {\n  out.intent = 'nl_parse';\n  out.nlText = text;\n  return [{ json: out, binary: items[0].binary }];\n}\n\n// Unrecognized slash-command: echo the raw text (escaped) so invisible\n// characters and formatting become visible for debugging.\nif (text.startsWith('/')) {\n  out.replyText = FALLBACK_TEXT + '\\n\\n(received: ' + JSON.stringify(text) + ')';\n}\nreturn [{ json: out, binary: items[0].binary }];"
       }
     },
     {
-      "id": "node-04-tiq3sf",
+      "id": "node-04-c2o1l3",
       "name": "Route by Intent",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -701,7 +701,7 @@
       }
     },
     {
-      "id": "node-05-w9zyoc",
+      "id": "node-05-tktnhp",
       "name": "Get Telegram Photo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -718,7 +718,7 @@
       }
     },
     {
-      "id": "node-06-w0p1p2",
+      "id": "node-06-fgff4o",
       "name": "Extract Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -732,7 +732,7 @@
       }
     },
     {
-      "id": "node-07-28j048",
+      "id": "node-07-twolav",
       "name": "Image OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -766,7 +766,7 @@
       }
     },
     {
-      "id": "node-08-17zlvn",
+      "id": "node-08-0sy8v7",
       "name": "Gemini Scan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -790,7 +790,7 @@
       }
     },
     {
-      "id": "node-09-kbpma5",
+      "id": "node-09-rgkug5",
       "name": "Processing Receipt",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -810,7 +810,7 @@
       }
     },
     {
-      "id": "node-10-d0tg8k",
+      "id": "node-10-jca3fn",
       "name": "Parse Scan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -824,7 +824,7 @@
       }
     },
     {
-      "id": "node-11-tomuh7",
+      "id": "node-11-k666mc",
       "name": "Scan OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -858,7 +858,7 @@
       }
     },
     {
-      "id": "node-12-5p6quw",
+      "id": "node-12-pnmn16",
       "name": "Gemini Scan Fallback",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -882,7 +882,7 @@
       }
     },
     {
-      "id": "node-13-eidsay",
+      "id": "node-13-srbicj",
       "name": "Parse Scan Fallback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -896,7 +896,7 @@
       }
     },
     {
-      "id": "node-14-gjpq7v",
+      "id": "node-14-vts857",
       "name": "Scan OK Fallback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -930,7 +930,7 @@
       }
     },
     {
-      "id": "node-15-ml26m2",
+      "id": "node-15-f8bijo",
       "name": "Reply Scan Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -950,7 +950,7 @@
       }
     },
     {
-      "id": "node-16-eftg68",
+      "id": "node-16-5o8fv5",
       "name": "Build Scan Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -960,11 +960,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\n// Prefer the pro-fallback scan result when present\nlet scan = null;\ntry { const s2 = $('Parse Scan Fallback').first().json; if (s2 && s2.scanOK) scan = s2; } catch (e) {}\nif (!scan) { try { const s1 = $('Parse Scan').first().json; if (s1 && s1.scanOK) scan = s1; } catch (e) {} }\nif (!scan) return [];\n\n// esc for Telegram HTML\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\n\nconst payload = {\n  userId: scan.userId,\n  chatId: scan.chatId,\n  amount: scan.amount,\n  rawCategory: scan.category || 'Other',\n  note: scan.merchant || 'Telegram receipt',\n  txDate: scan.date,\n  merchant: scan.merchant,\n  source: 'telegram_receipt',\n  dateAdjusted: !!scan.dateAdjusted,\n  originalDate: scan.originalDate || '',\n};\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.pendingScans) staticData.pendingScans = {};\n// cleanup entries older than 1 hour, cap total\nconst cutoff = Date.now() - 3600 * 1000;\nfor (const k of Object.keys(staticData.pendingScans)) {\n  if ((staticData.pendingScans[k].created || 0) < cutoff) delete staticData.pendingScans[k];\n}\nconst keys = Object.keys(staticData.pendingScans);\nwhile (keys.length >= 20) { delete staticData.pendingScans[keys.shift()]; }\n\nconst saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nstaticData.pendingScans[saveId] = { payload, created: Date.now() };\n\nlet reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\U{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\U{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\U{1F4C5} ' + scan.date;\nif (scan.dateAdjusted) reply += '\\n\\u2139\\uFE0F (receipt dated ' + scan.originalDate + ' - will be saved under today)';\nreply += '\\n\\n\\u2705 Save or \\u274C Discard below. To fix a value first, send /edit after saving.';\n\nreturn [{ json: { chatId: c.chatId, replyText: reply, saveId, cbAction: 'none' } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\n// Prefer the pro-fallback scan result when present\nlet scan = null;\ntry { const s2 = $('Parse Scan Fallback').first().json; if (s2 && s2.scanOK) scan = s2; } catch (e) {}\nif (!scan) { try { const s1 = $('Parse Scan').first().json; if (s1 && s1.scanOK) scan = s1; } catch (e) {} }\nif (!scan) return [];\n\n// esc for Telegram HTML\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\n\nconst payload = {\n  userId: scan.userId,\n  chatId: scan.chatId,\n  amount: scan.amount,\n  rawCategory: scan.category || 'Other',\n  note: scan.merchant || 'Telegram receipt',\n  txDate: scan.date,\n  merchant: scan.merchant,\n  source: 'telegram_receipt',\n  dateAdjusted: !!scan.dateAdjusted,\n  originalDate: scan.originalDate || '',\n};\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.pendingScans) staticData.pendingScans = {};\n// cleanup entries older than 1 hour, cap total\nconst cutoff = Date.now() - 3600 * 1000;\nfor (const k of Object.keys(staticData.pendingScans)) {\n  if ((staticData.pendingScans[k].created || 0) < cutoff) delete staticData.pendingScans[k];\n}\nconst keys = Object.keys(staticData.pendingScans);\nwhile (keys.length >= 20) { delete staticData.pendingScans[keys.shift()]; }\n\nconst saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nstaticData.pendingScans[saveId] = { payload, created: Date.now() };\n// Per-user pointer so a text reply like 'save' can confirm the latest\n// parked scan without knowing the saveId (Read Callback resolves it).\nif (!staticData.pendingScansByUser) staticData.pendingScansByUser = {};\nstaticData.pendingScansByUser[scan.userId] = saveId;\n\nlet reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\u{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\u{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\u{1F4C5} ' + scan.date;\nif (scan.dateAdjusted) reply += '\\n\\u2139\\uFE0F (receipt dated ' + scan.originalDate + ' - will be saved under today)';\nreply += '\\n\\n\\u2705 Save or \\u274C Discard below - replying \\\"save\\\" or \\\"discard\\\" also work. To fix a value first, save it, then send /edit.';\n\nreturn [{ json: { chatId: c.chatId, replyText: reply, saveId, cbAction: 'none' } }];"
       }
     },
     {
-      "id": "node-17-7m8bfs",
+      "id": "node-17-hujyvw",
       "name": "Send Scan Confirmation",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1011,7 +1011,7 @@
       }
     },
     {
-      "id": "node-18-qzgwet",
+      "id": "node-18-f9txqz",
       "name": "Answer Callback",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1019,6 +1019,7 @@
         620,
         1180
       ],
+      "onError": "continueRegularOutput",
       "parameters": {
         "resource": "callback",
         "operation": "answerQuery",
@@ -1027,7 +1028,7 @@
       }
     },
     {
-      "id": "node-19-gojb0q",
+      "id": "node-19-825pd7",
       "name": "Read Callback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1037,11 +1038,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst pending = (staticData.pendingScans || {})[c.cbId];\n// remove immediately so double-taps can't double-write\nif (staticData.pendingScans && staticData.pendingScans[c.cbId]) delete staticData.pendingScans[c.cbId];\n\nif (!pending) {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'That scan has already been processed or expired. Send the receipt photo again.' } }];\n}\nif (c.cbAction === 'save') {\n  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save' }) }];\n}\nif (c.cbAction === 'discard') {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: '\\u274C Receipt scan discarded.' } }];\n}\nreturn [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'Unknown button action.' } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\nconst staticData = $getWorkflowStaticData('global');\n// Resolve the pending scan: by callback id for inline-button taps, or by\n// the sender's latest parked scan for text confirmations like 'save'.\nlet saveId = c.cbId;\nif (!saveId) {\n  saveId = (staticData.pendingScansByUser || {})[c.userId] || '';\n}\nconst pending = (staticData.pendingScans || {})[saveId];\n// remove immediately so double-taps and repeated 'save' texts never double-write\nif (staticData.pendingScans && staticData.pendingScans[saveId]) delete staticData.pendingScans[saveId];\nif (staticData.pendingScansByUser && staticData.pendingScansByUser[c.userId] === saveId) delete staticData.pendingScansByUser[c.userId];\n\nif (!pending) {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'No pending receipt to save. Send a receipt photo first - or tap the Save/Discard buttons under the scan result.' } }];\n}\nif (c.cbAction === 'save') {\n  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save' }) }];\n}\nif (c.cbAction === 'discard') {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: '\\u274C Receipt scan discarded.' } }];\n}\nreturn [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'Unknown button action.' } }];"
       }
     },
     {
-      "id": "node-20-5nehp1",
+      "id": "node-20-yt184e",
       "name": "Is Save?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1075,7 +1076,7 @@
       }
     },
     {
-      "id": "node-21-32zkw6",
+      "id": "node-21-ls7lyw",
       "name": "Reply Callback Result",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1095,7 +1096,7 @@
       }
     },
     {
-      "id": "node-22-mk3a6h",
+      "id": "node-22-o34q2c",
       "name": "Build NL Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1109,7 +1110,7 @@
       }
     },
     {
-      "id": "node-23-qdyhsi",
+      "id": "node-23-ze56er",
       "name": "Gemini NL Parse",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1133,7 +1134,7 @@
       }
     },
     {
-      "id": "node-24-7sr1tf",
+      "id": "node-24-yqyzpn",
       "name": "Parse NL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1143,11 +1144,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\nlet type = 'none', amount = 0, category = '', note = '', date = '';\ntry {\n  const j = items[0].json;\n  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n  let text = parts.map(p => p.text || '').join('');\n  text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n  const parsed = JSON.parse(text);\n  type = String(parsed.type || 'none').toLowerCase();\n  amount = Number(parsed.amount) || 0;\n  category = String(parsed.category || '');\n  note = String(parsed.note || '');\n  date = String(parsed.date || '');\n} catch (e) { type = 'none'; }\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) date = '';\n\nif (type === 'expense' && amount > 0) {\n  return [{ json: {\n    nlParsed: true, cbAction: 'save',\n    userId: c.userId, chatId: c.chatId,\n    amount, rawCategory: category || 'Other',\n    note: note || 'Voice/text entry',\n    txDate: date || c.today,\n    merchant: '', source: 'telegram',\n    dateAdjusted: false, originalDate: '',\n  } }];\n}\nif (type === 'income' && amount > 0) {\n  return [{ json: { chatId: c.chatId, replyText: '\\U{1F4B0} Income detected: \\u20B9' + amount + '. Log it with: /earned ' + amount + (note ? ' ' + note : '') } }];\n}\nreturn [{ json: { chatId: c.chatId, replyText: 'I could not read that as an expense. Try /spent [amount] [category], e.g. /spent 250 groceries - or /help.' } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\nlet type = 'none', amount = 0, category = '', note = '', date = '';\ntry {\n  const j = items[0].json;\n  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n  let text = parts.map(p => p.text || '').join('');\n  text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n  const parsed = JSON.parse(text);\n  type = String(parsed.type || 'none').toLowerCase();\n  amount = Number(parsed.amount) || 0;\n  category = String(parsed.category || '');\n  note = String(parsed.note || '');\n  date = String(parsed.date || '');\n} catch (e) { type = 'none'; }\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) date = '';\n\nif (type === 'expense' && amount > 0) {\n  return [{ json: {\n    nlParsed: true, cbAction: 'save',\n    userId: c.userId, chatId: c.chatId,\n    amount, rawCategory: category || 'Other',\n    note: note || 'Voice/text entry',\n    txDate: date || c.today,\n    merchant: '', source: 'telegram',\n    dateAdjusted: false, originalDate: '',\n  } }];\n}\nif (type === 'income' && amount > 0) {\n  return [{ json: { chatId: c.chatId, replyText: '\\u{1F4B0} Income detected: \\u20B9' + amount + '. Log it with: /earned ' + amount + (note ? ' ' + note : '') } }];\n}\nreturn [{ json: { chatId: c.chatId, replyText: 'I could not read that as an expense. Try /spent [amount] [category], e.g. /spent 250 groceries - or /help.' } }];"
       }
     },
     {
-      "id": "node-25-b9f9e4",
+      "id": "node-25-34ee49",
       "name": "NL Expense?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1181,7 +1182,7 @@
       }
     },
     {
-      "id": "node-26-p76i7u",
+      "id": "node-26-ltfozm",
       "name": "Build Edit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1195,7 +1196,7 @@
       }
     },
     {
-      "id": "node-27-coov3o",
+      "id": "node-27-dk3auc",
       "name": "Write Edit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1218,7 +1219,7 @@
       }
     },
     {
-      "id": "node-28-lrbjox",
+      "id": "node-28-n1q5pc",
       "name": "Reply Edit",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1238,7 +1239,7 @@
       }
     },
     {
-      "id": "node-29-nf2p85",
+      "id": "node-29-euaebg",
       "name": "Build Ask Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1252,7 +1253,7 @@
       }
     },
     {
-      "id": "node-30-18wrvz",
+      "id": "node-30-nkcujx",
       "name": "Gemini Ask",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1276,7 +1277,7 @@
       }
     },
     {
-      "id": "node-31-5xq6wx",
+      "id": "node-31-2usmtv",
       "name": "Build Ask Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1286,11 +1287,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\nlet answer = '';\ntry {\n  const j = items[0].json;\n  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n  answer = parts.map(p => p.text || '').join('').trim();\n} catch (e) { answer = ''; }\nif (!answer) answer = 'Sorry - I could not produce an answer. Try rephrasing your question.';\n// Escape for Telegram HTML, then restore safe bold markers\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\nreturn [{ json: { chatId: c.chatId, replyText: '\\U{1F9EE} ' + esc(answer) } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\nlet answer = '';\ntry {\n  const j = items[0].json;\n  const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n  answer = parts.map(p => p.text || '').join('').trim();\n} catch (e) { answer = ''; }\nif (!answer) answer = 'Sorry - I could not produce an answer. Try rephrasing your question.';\n// Escape for Telegram HTML, then restore safe bold markers\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\nreturn [{ json: { chatId: c.chatId, replyText: '\\u{1F9EE} ' + esc(answer) } }];"
       }
     },
     {
-      "id": "node-32-q2iwzo",
+      "id": "node-32-q1aanz",
       "name": "Register Bot Menu",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1311,7 +1312,7 @@
       }
     },
     {
-      "id": "node-33-u5x5ry",
+      "id": "node-33-upe92x",
       "name": "Reply Menu",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1331,7 +1332,7 @@
       }
     },
     {
-      "id": "node-34-b7wyu9",
+      "id": "node-34-rki6i4",
       "name": "Is Album Photo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1365,7 +1366,7 @@
       }
     },
     {
-      "id": "node-35-hiwxlt",
+      "id": "node-35-iqizwb",
       "name": "Query Categories",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1385,7 +1386,7 @@
       }
     },
     {
-      "id": "node-36-hq420a",
+      "id": "node-36-zqyfxh",
       "name": "Collect Categories",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1399,7 +1400,7 @@
       }
     },
     {
-      "id": "node-37-tk2xcz",
+      "id": "node-37-z1m6fw",
       "name": "Query Household",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1419,7 +1420,7 @@
       }
     },
     {
-      "id": "node-38-6tbxxh",
+      "id": "node-38-jcsp1f",
       "name": "Build Transaction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1433,7 +1434,7 @@
       }
     },
     {
-      "id": "node-39-j859ta",
+      "id": "node-39-afoueh",
       "name": "Create Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1456,7 +1457,7 @@
       }
     },
     {
-      "id": "node-40-ox076p",
+      "id": "node-40-06l0rx",
       "name": "Build Budget Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1470,7 +1471,7 @@
       }
     },
     {
-      "id": "node-41-glnyhi",
+      "id": "node-41-j97q8s",
       "name": "Query Budgets",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1490,7 +1491,7 @@
       }
     },
     {
-      "id": "node-42-yfijh3",
+      "id": "node-42-6jtm8m",
       "name": "Collect Budgets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1504,7 +1505,7 @@
       }
     },
     {
-      "id": "node-43-bx8yeu",
+      "id": "node-43-gywiqy",
       "name": "Query Month Transactions (Budget)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1524,7 +1525,7 @@
       }
     },
     {
-      "id": "node-44-mm5egt",
+      "id": "node-44-w98ejq",
       "name": "Budget Check & Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1538,7 +1539,7 @@
       }
     },
     {
-      "id": "node-45-2k9eu9",
+      "id": "node-45-d20ozo",
       "name": "Send Expense Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1558,7 +1559,7 @@
       }
     },
     {
-      "id": "node-46-zvndwg",
+      "id": "node-46-0dokcg",
       "name": "Query Household (Income)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1578,7 +1579,7 @@
       }
     },
     {
-      "id": "node-47-tu6rm6",
+      "id": "node-47-7p6xgm",
       "name": "Build Income Entry",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1592,7 +1593,7 @@
       }
     },
     {
-      "id": "node-48-kdfk0w",
+      "id": "node-48-0psmy0",
       "name": "Create Income Entry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1615,7 +1616,7 @@
       }
     },
     {
-      "id": "node-49-1e2f1m",
+      "id": "node-49-w90k99",
       "name": "Reply Income",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1635,7 +1636,7 @@
       }
     },
     {
-      "id": "node-50-q4cld0",
+      "id": "node-50-93hbtb",
       "name": "Query Month Transactions (Summary)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1655,7 +1656,7 @@
       }
     },
     {
-      "id": "node-51-j8ehcj",
+      "id": "node-51-uoqhq1",
       "name": "Collect Summary Tx",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1669,7 +1670,7 @@
       }
     },
     {
-      "id": "node-52-02rjvq",
+      "id": "node-52-lzoxuf",
       "name": "Query Month Incomes",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1689,7 +1690,7 @@
       }
     },
     {
-      "id": "node-53-gkkz1f",
+      "id": "node-53-b47iej",
       "name": "Build Summary Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1703,7 +1704,7 @@
       }
     },
     {
-      "id": "node-54-si5epa",
+      "id": "node-54-konrxw",
       "name": "Send Summary Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1723,7 +1724,7 @@
       }
     },
     {
-      "id": "node-55-bdqwq5",
+      "id": "node-55-6wmo0i",
       "name": "Query Invites",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1743,7 +1744,7 @@
       }
     },
     {
-      "id": "node-56-p289g2",
+      "id": "node-56-432oxk",
       "name": "Validate Invite",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1757,7 +1758,7 @@
       }
     },
     {
-      "id": "node-57-q9jc6q",
+      "id": "node-57-4g7vu4",
       "name": "Invite Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1791,7 +1792,7 @@
       }
     },
     {
-      "id": "node-58-5w9aw1",
+      "id": "node-58-jo2g3z",
       "name": "Create or Update Membership",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1811,7 +1812,7 @@
       }
     },
     {
-      "id": "node-59-irj72a",
+      "id": "node-59-ptnjxh",
       "name": "Mark Invite Accepted",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1832,7 +1833,7 @@
       }
     },
     {
-      "id": "node-60-lgo2vf",
+      "id": "node-60-w4d1nm",
       "name": "Reply Join Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1852,7 +1853,7 @@
       }
     },
     {
-      "id": "node-61-fxc45a",
+      "id": "node-61-wblj7f",
       "name": "Reply Join Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1872,7 +1873,7 @@
       }
     },
     {
-      "id": "node-62-pex8fw",
+      "id": "node-62-7xta85",
       "name": "Query My Transactions",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1892,7 +1893,7 @@
       }
     },
     {
-      "id": "node-63-drso8x",
+      "id": "node-63-jc7yya",
       "name": "Build Undo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1906,7 +1907,7 @@
       }
     },
     {
-      "id": "node-64-ywaas8",
+      "id": "node-64-fw55o2",
       "name": "Delete Last Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1926,7 +1927,7 @@
       }
     },
     {
-      "id": "node-65-ckgyld",
+      "id": "node-65-v1o2v8",
       "name": "Reply Undo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1946,7 +1947,7 @@
       }
     },
     {
-      "id": "node-66-04um3j",
+      "id": "node-66-apw0hs",
       "name": "Build Recent Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1960,7 +1961,7 @@
       }
     },
     {
-      "id": "node-67-uoo78e",
+      "id": "node-67-4ptnz3",
       "name": "Build Export CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1974,7 +1975,7 @@
       }
     },
     {
-      "id": "node-68-uvkdep",
+      "id": "node-68-vkjlfg",
       "name": "Send Export Document",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1991,7 +1992,7 @@
       }
     },
     {
-      "id": "node-69-xgksy7",
+      "id": "node-69-xrli40",
       "name": "Query Categories (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2011,7 +2012,7 @@
       }
     },
     {
-      "id": "node-70-rr8d72",
+      "id": "node-70-kfo81z",
       "name": "Build Categories Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2025,7 +2026,7 @@
       }
     },
     {
-      "id": "node-71-7av929",
+      "id": "node-71-hl9pag",
       "name": "Query Household (Hub)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2045,7 +2046,7 @@
       }
     },
     {
-      "id": "node-72-9vxttp",
+      "id": "node-72-no1tpw",
       "name": "Dispatch After Household",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -2326,7 +2327,7 @@
       }
     },
     {
-      "id": "node-73-eut967",
+      "id": "node-73-jngds4",
       "name": "Query Month Budgets (Set)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2346,7 +2347,7 @@
       }
     },
     {
-      "id": "node-74-7bzuwu",
+      "id": "node-74-yce7n3",
       "name": "Build Budget Set",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2360,7 +2361,7 @@
       }
     },
     {
-      "id": "node-75-a0erfx",
+      "id": "node-75-sbworr",
       "name": "Reply Budget Set",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2380,7 +2381,7 @@
       }
     },
     {
-      "id": "node-76-al2ovd",
+      "id": "node-76-p7xknt",
       "name": "Query Budgets (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2400,7 +2401,7 @@
       }
     },
     {
-      "id": "node-77-90g03x",
+      "id": "node-77-070m5i",
       "name": "Collect Budgets (List)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2414,7 +2415,7 @@
       }
     },
     {
-      "id": "node-78-jyh2pw",
+      "id": "node-78-66c8bj",
       "name": "Query Month Tx (Budgets List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2434,7 +2435,7 @@
       }
     },
     {
-      "id": "node-79-xjcd8h",
+      "id": "node-79-4jcdrt",
       "name": "Build Budgets Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2448,7 +2449,7 @@
       }
     },
     {
-      "id": "node-80-ltb63r",
+      "id": "node-80-yi77rb",
       "name": "Build Goal",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2462,7 +2463,7 @@
       }
     },
     {
-      "id": "node-81-8c1snh",
+      "id": "node-81-mm2xgh",
       "name": "Reply Goal",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2482,7 +2483,7 @@
       }
     },
     {
-      "id": "node-82-yzlyh5",
+      "id": "node-82-10f6aw",
       "name": "Prep Goals Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2496,7 +2497,7 @@
       }
     },
     {
-      "id": "node-83-m4j5l5",
+      "id": "node-83-8r9x60",
       "name": "Query Goals",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2516,7 +2517,7 @@
       }
     },
     {
-      "id": "node-84-zq73sj",
+      "id": "node-84-7uaxnv",
       "name": "Build Contribute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2530,7 +2531,7 @@
       }
     },
     {
-      "id": "node-85-658cu6",
+      "id": "node-85-6kbc24",
       "name": "Goal Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -2564,7 +2565,7 @@
       }
     },
     {
-      "id": "node-86-lr02zy",
+      "id": "node-86-yupr1f",
       "name": "Reply Goal Not Found",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2584,7 +2585,7 @@
       }
     },
     {
-      "id": "node-87-epkv2k",
+      "id": "node-87-itcv6n",
       "name": "Reply Contribute",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2604,7 +2605,7 @@
       }
     },
     {
-      "id": "node-88-y5w15y",
+      "id": "node-88-bkvizf",
       "name": "Build Goals Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2618,7 +2619,7 @@
       }
     },
     {
-      "id": "node-89-1t97pc",
+      "id": "node-89-ywy8cw",
       "name": "Build Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2632,7 +2633,7 @@
       }
     },
     {
-      "id": "node-90-9itr2f",
+      "id": "node-90-dajlw5",
       "name": "Reply Recurring",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2652,7 +2653,7 @@
       }
     },
     {
-      "id": "node-91-ic5bx1",
+      "id": "node-91-8t4uom",
       "name": "Prep Recurrings Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2666,7 +2667,7 @@
       }
     },
     {
-      "id": "node-92-aw9k3f",
+      "id": "node-92-01wa8x",
       "name": "Query Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2686,7 +2687,7 @@
       }
     },
     {
-      "id": "node-93-zm7xhw",
+      "id": "node-93-llobhb",
       "name": "Build Recurrings Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2700,7 +2701,7 @@
       }
     },
     {
-      "id": "node-94-v3m0gb",
+      "id": "node-94-atwhap",
       "name": "Build Loan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2714,7 +2715,7 @@
       }
     },
     {
-      "id": "node-95-mstjx3",
+      "id": "node-95-ltcrfq",
       "name": "Reply Loan",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2734,7 +2735,7 @@
       }
     },
     {
-      "id": "node-96-81eyau",
+      "id": "node-96-az2iej",
       "name": "Prep Loans Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2748,7 +2749,7 @@
       }
     },
     {
-      "id": "node-97-ekclnk",
+      "id": "node-97-aurt4e",
       "name": "Query Loans",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2768,7 +2769,7 @@
       }
     },
     {
-      "id": "node-98-oeuvua",
+      "id": "node-98-2qe1mr",
       "name": "Build Loans Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2782,7 +2783,7 @@
       }
     },
     {
-      "id": "node-99-l2l14a",
+      "id": "node-99-t3jkqj",
       "name": "Prep Members Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2796,7 +2797,7 @@
       }
     },
     {
-      "id": "node-100-45pt2p",
+      "id": "node-100-g7ejpq",
       "name": "Query Members",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2816,7 +2817,7 @@
       }
     },
     {
-      "id": "node-101-jz2i37",
+      "id": "node-101-fsgdhj",
       "name": "Build Members Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2830,7 +2831,7 @@
       }
     },
     {
-      "id": "node-102-vo05nz",
+      "id": "node-102-hsj8sa",
       "name": "Prep Investments Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2844,7 +2845,7 @@
       }
     },
     {
-      "id": "node-103-cwuzqp",
+      "id": "node-103-lkxkdr",
       "name": "Query Investment Accounts",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2864,7 +2865,7 @@
       }
     },
     {
-      "id": "node-104-czunnh",
+      "id": "node-104-idadi3",
       "name": "Build Investments Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2878,7 +2879,7 @@
       }
     },
     {
-      "id": "node-105-0d74p2",
+      "id": "node-105-lcp7c9",
       "name": "Write Budget",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2901,7 +2902,7 @@
       }
     },
     {
-      "id": "node-106-oku4ku",
+      "id": "node-106-yd58jo",
       "name": "Write Contribution",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2924,7 +2925,7 @@
       }
     },
     {
-      "id": "node-107-qo8vfl",
+      "id": "node-107-v17um9",
       "name": "Write Loan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2947,7 +2948,7 @@
       }
     },
     {
-      "id": "node-108-u92w3c",
+      "id": "node-108-mmb2sw",
       "name": "Write Recurring Batch",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2970,7 +2971,7 @@
       }
     },
     {
-      "id": "node-109-35otvp",
+      "id": "node-109-dwqbk1",
       "name": "Create Goal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2993,7 +2994,7 @@
       }
     },
     {
-      "id": "node-110-ueunzu",
+      "id": "node-110-evpz7p",
       "name": "Create Recurring Rule",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3016,7 +3017,7 @@
       }
     },
     {
-      "id": "node-111-p3e4t7",
+      "id": "node-111-b72u1m",
       "name": "Send List Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -3036,7 +3037,7 @@
       }
     },
     {
-      "id": "node-112-wqesma",
+      "id": "node-112-6vbfbt",
       "name": "Daily 9AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -3056,7 +3057,7 @@
       }
     },
     {
-      "id": "node-113-5mi73i",
+      "id": "node-113-s9b8dl",
       "name": "Query Due Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -3076,7 +3077,7 @@
       }
     },
     {
-      "id": "node-114-57fdjo",
+      "id": "node-114-u0ijgd",
       "name": "Process Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3090,7 +3091,7 @@
       }
     },
     {
-      "id": "node-115-tq6ga9",
+      "id": "node-115-ivviij",
       "name": "Send Help",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,

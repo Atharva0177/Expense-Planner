@@ -616,7 +616,7 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
     check("callback save -> payload", saved.cbAction === "save" && saved.amount === 135 && saved.userId === "telegram_1", saved);
     // second tap: stale
     const saved2 = fnS([], $$, $sd)[0].json;
-    check("callback double-tap stale", saved2.cbAction === "none" && saved2.replyText.includes("already been processed"), saved2);
+    check("callback double-tap stale", saved2.cbAction === "none" && saved2.replyText.includes("No pending receipt"), saved2);
     // discard
     staticStore.pendingScans.sc2 = { payload: { userId: "u", chatId: 42, amount: 1 }, created: Date.now() };
     const cDisc = { chatId: 42, intent: "callback", cbId: "sc2", cbAction: "discard", queryId: "q2" };
@@ -656,6 +656,32 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
     check("ask guard non-ask intent", guard(rows, $g).length === 0);
   }
 }
+
+  // Text confirm word routing: 'save' routes to the callback intent
+  r = runCode("Classify Update", mkUpdate("save"));
+  check("classify 'save' -> callback", r[0].json.intent === "callback" && r[0].json.cbAction === "save" && r[0].json.cbId === "", r[0].json);
+  r = runCode("Classify Update", mkUpdate("/Save"));
+  check("classify '/Save' -> callback", r[0].json.intent === "callback" && r[0].json.cbAction === "save", r[0].json.intent);
+  r = runCode("Classify Update", mkUpdate("discard"));
+  check("classify 'discard' -> callback", r[0].json.intent === "callback" && r[0].json.cbAction === "discard", r[0].json.intent);
+  r = runCode("Classify Update", mkUpdate("spent 250 on chai"));
+  check("expense text still -> nl_parse", r[0].json.intent === "nl_parse", r[0].json.intent);
+
+  // Read Callback: text confirm resolves via per-user pointer when cbId is empty
+  {
+    const store = { pendingScans: { scA: { payload: { userId: "telegram_1", chatId: 42, amount: 135, rawCategory: "Groceries", note: "REL", txDate: "2026-10-08", merchant: "REL", source: "telegram_receipt" }, created: Date.now() } }, pendingScansByUser: { telegram_1: "scA" } };
+    const $sd = (t) => store;
+    const ct = { chatId: 42, userId: "telegram_1", intent: "callback", cbId: "", cbAction: "save", queryId: "" };
+    const $$2 = (n) => ({ first: () => ({ json: ct }) });
+    const fnR = new Function("items", "$", "$getWorkflowStaticData", codeOf("Read Callback"));
+    const saved = fnR([], $$2, $sd)[0].json;
+    check("text 'save' resolves latest scan", saved.cbAction === "save" && saved.amount === 135, saved);
+    check("per-user pointer cleared", !store.pendingScansByUser.telegram_1, store.pendingScansByUser);
+    check("pending scan cleared", !store.pendingScans.scA, Object.keys(store.pendingScans));
+    // second 'save' -> stale
+    const stale = fnR([], $$2, $sd)[0].json;
+    check("second text save is stale", stale.cbAction === "none" && stale.replyText.includes("No pending receipt"), stale.replyText);
+  }
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
