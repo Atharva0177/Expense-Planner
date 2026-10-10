@@ -2,7 +2,7 @@
   "name": "Expense Planner Bot",
   "nodes": [
     {
-      "id": "node-01-ob6s65",
+      "id": "node-01-oioea9",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.5,
@@ -10,7 +10,7 @@
         -80,
         340
       ],
-      "webhookId": "node-02-hyex1j",
+      "webhookId": "node-02-it21r2",
       "parameters": {
         "updates": [
           "message",
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "node-03-tc6o24",
+      "id": "node-03-jkglgf",
       "name": "Classify Update",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -36,7 +36,7 @@
       }
     },
     {
-      "id": "node-04-l6f8wf",
+      "id": "node-04-tiq3sf",
       "name": "Route by Intent",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -701,7 +701,7 @@
       }
     },
     {
-      "id": "node-05-o00vyc",
+      "id": "node-05-w9zyoc",
       "name": "Get Telegram Photo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -718,7 +718,7 @@
       }
     },
     {
-      "id": "node-06-049sox",
+      "id": "node-06-w0p1p2",
       "name": "Extract Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -732,7 +732,7 @@
       }
     },
     {
-      "id": "node-07-yyddgm",
+      "id": "node-07-28j048",
       "name": "Image OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -766,7 +766,7 @@
       }
     },
     {
-      "id": "node-08-xf9no2",
+      "id": "node-08-17zlvn",
       "name": "Gemini Scan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -790,7 +790,7 @@
       }
     },
     {
-      "id": "node-09-84wmzg",
+      "id": "node-09-kbpma5",
       "name": "Processing Receipt",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -810,7 +810,7 @@
       }
     },
     {
-      "id": "node-10-n1h6yp",
+      "id": "node-10-d0tg8k",
       "name": "Parse Scan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -820,11 +820,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const classify = $('Classify Update').first().json;\n\nlet scanOK = false;\nlet amount = 0;\nlet date = '';\nlet merchant = '';\nlet category = '';\nlet error = '';\nlet dateAdjusted = false;\nlet originalDate = '';\n\ntry {\n  const j = items[0].json;\n  // If the Gemini HTTP call itself failed (onError: continue passes {error} here),\n  // surface the REAL cause instead of the downstream JSON.parse message.\n  if (j && j.error && !j.candidates) {\n    const upstream = String(j.error);\n    if (/429/.test(upstream)) {\n      error = 'Gemini free-tier rate limit hit - wait about a minute, then send the photo again';\n    } else if (/40[0134]/.test(upstream)) {\n      error = 'Gemini API rejected the request: ' + upstream.slice(0, 180);\n    } else {\n      error = upstream.slice(0, 180);\n    }\n  } else {\n    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n    let text = parts.map(p => p.text || '').join('');\n    text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n    const parsed = JSON.parse(text);\n    amount = Number(parsed.amount);\n    date = String(parsed.date || '').trim();\n    merchant = String(parsed.merchant || '').trim();\n    category = String(parsed.category || '').trim();\n  }\n} catch (e) {\n  error = (e && e.message) ? e.message : 'Failed to parse scan result';\n}\n\n// Amount sanity: reject obvious misreads (line items, phone numbers, tax IDs)\nif (!error && (!isFinite(amount) || amount <= 0)) {\n  error = 'No valid amount found on receipt';\n} else if (!error && amount > 5000000) {\n  error = 'Amount looks wrong (over 50 lakh) - re-check with a clearer photo';\n}\n\n// Merchant sanity: drop placeholder junk Gemini sometimes echoes\nif (/^(store name|merchant|merchant name|n\\/?a|na|none|unknown|\\-+|\\.*|\\s*)$/i.test(merchant)) {\n  merchant = '';\n}\n\n// Date sanity: valid format, not far in the past, not in the future.\n// The website dashboard is month-scoped, so stale/future dates are filed under today instead.\noriginalDate = date;\nconst nowTs = new Date(classify.today + 'T00:00:00Z').getTime();\nconst SIXTY_DAYS = 60 * 24 * 3600 * 1000;\nif (/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {\n  const ts = new Date(date + 'T00:00:00Z').getTime();\n  if (!isNaN(ts) && (ts < nowTs - SIXTY_DAYS || ts > nowTs + 2 * 24 * 3600 * 1000)) {\n    date = classify.today;\n    dateAdjusted = true;\n  }\n} else {\n  date = classify.today; // missing or malformed date -> silent fallback\n}\n\nscanOK = !error;\n\nreturn [{ json: { scanOK, amount, date, merchant, category, error, dateAdjusted, originalDate, chatId: classify.chatId, userId: classify.userId } }];"
+        "jsCode": "const classify = $('Classify Update').first().json;\n\nlet scanOK = false;\nlet amount = 0;\nlet date = '';\nlet merchant = '';\nlet category = '';\nlet error = '';\nlet dateAdjusted = false;\nlet originalDate = '';\n\ntry {\n  const j = items[0].json;\n  // If the Gemini HTTP call itself failed (onError: continue passes {error} here),\n  // surface the REAL cause instead of the downstream JSON.parse message.\n  if (j && j.error && !j.candidates) {\n    const upstream = String(j.error);\n    if (/credential/i.test(upstream)) {\n      error = 'Gemini credential is not assigned - open the n8n editor, select the Header Auth (x-goog-api-key) credential on the Gemini Scan / Gemini Scan Fallback nodes';\n    } else if (/429/.test(upstream)) {\n      error = 'Gemini free-tier rate limit hit - wait about a minute, then send the photo again';\n    } else if (/40[0134]/.test(upstream)) {\n      error = 'Gemini API rejected the request: ' + upstream.slice(0, 180);\n    } else {\n      error = upstream.slice(0, 180);\n    }\n  } else {\n    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n    let text = parts.map(p => p.text || '').join('');\n    text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n    const parsed = JSON.parse(text);\n    amount = Number(parsed.amount);\n    date = String(parsed.date || '').trim();\n    merchant = String(parsed.merchant || '').trim();\n    category = String(parsed.category || '').trim();\n  }\n} catch (e) {\n  error = (e && e.message) ? e.message : 'Failed to parse scan result';\n}\n\n// Amount sanity: reject obvious misreads (line items, phone numbers, tax IDs)\nif (!error && (!isFinite(amount) || amount <= 0)) {\n  error = 'No valid amount found on receipt';\n} else if (!error && amount > 5000000) {\n  error = 'Amount looks wrong (over 50 lakh) - re-check with a clearer photo';\n}\n\n// Merchant sanity: drop placeholder junk Gemini sometimes echoes\nif (/^(store name|merchant|merchant name|n\\/?a|na|none|unknown|\\-+|\\.*|\\s*)$/i.test(merchant)) {\n  merchant = '';\n}\n\n// Date sanity: valid format, not far in the past, not in the future.\n// The website dashboard is month-scoped, so stale/future dates are filed under today instead.\noriginalDate = date;\nconst nowTs = new Date(classify.today + 'T00:00:00Z').getTime();\nconst SIXTY_DAYS = 60 * 24 * 3600 * 1000;\nif (/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {\n  const ts = new Date(date + 'T00:00:00Z').getTime();\n  if (!isNaN(ts) && (ts < nowTs - SIXTY_DAYS || ts > nowTs + 2 * 24 * 3600 * 1000)) {\n    date = classify.today;\n    dateAdjusted = true;\n  }\n} else {\n  date = classify.today; // missing or malformed date -> silent fallback\n}\n\nscanOK = !error;\n\nreturn [{ json: { scanOK, amount, date, merchant, category, error, dateAdjusted, originalDate, chatId: classify.chatId, userId: classify.userId } }];"
       }
     },
     {
-      "id": "node-11-snnp9n",
+      "id": "node-11-tomuh7",
       "name": "Scan OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -858,7 +858,7 @@
       }
     },
     {
-      "id": "node-12-kw82qt",
+      "id": "node-12-5p6quw",
       "name": "Gemini Scan Fallback",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -882,7 +882,7 @@
       }
     },
     {
-      "id": "node-13-21i1pa",
+      "id": "node-13-eidsay",
       "name": "Parse Scan Fallback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -892,11 +892,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const classify = $('Classify Update').first().json;\n\nlet scanOK = false;\nlet amount = 0;\nlet date = '';\nlet merchant = '';\nlet category = '';\nlet error = '';\nlet dateAdjusted = false;\nlet originalDate = '';\n\ntry {\n  const j = items[0].json;\n  // If the Gemini HTTP call itself failed (onError: continue passes {error} here),\n  // surface the REAL cause instead of the downstream JSON.parse message.\n  if (j && j.error && !j.candidates) {\n    const upstream = String(j.error);\n    if (/429/.test(upstream)) {\n      error = 'Gemini free-tier rate limit hit - wait about a minute, then send the photo again';\n    } else if (/40[0134]/.test(upstream)) {\n      error = 'Gemini API rejected the request: ' + upstream.slice(0, 180);\n    } else {\n      error = upstream.slice(0, 180);\n    }\n  } else {\n    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n    let text = parts.map(p => p.text || '').join('');\n    text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n    const parsed = JSON.parse(text);\n    amount = Number(parsed.amount);\n    date = String(parsed.date || '').trim();\n    merchant = String(parsed.merchant || '').trim();\n    category = String(parsed.category || '').trim();\n  }\n} catch (e) {\n  error = (e && e.message) ? e.message : 'Failed to parse scan result';\n}\n\n// Amount sanity: reject obvious misreads (line items, phone numbers, tax IDs)\nif (!error && (!isFinite(amount) || amount <= 0)) {\n  error = 'No valid amount found on receipt';\n} else if (!error && amount > 5000000) {\n  error = 'Amount looks wrong (over 50 lakh) - re-check with a clearer photo';\n}\n\n// Merchant sanity: drop placeholder junk Gemini sometimes echoes\nif (/^(store name|merchant|merchant name|n\\/?a|na|none|unknown|\\-+|\\.*|\\s*)$/i.test(merchant)) {\n  merchant = '';\n}\n\n// Date sanity: valid format, not far in the past, not in the future.\n// The website dashboard is month-scoped, so stale/future dates are filed under today instead.\noriginalDate = date;\nconst nowTs = new Date(classify.today + 'T00:00:00Z').getTime();\nconst SIXTY_DAYS = 60 * 24 * 3600 * 1000;\nif (/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {\n  const ts = new Date(date + 'T00:00:00Z').getTime();\n  if (!isNaN(ts) && (ts < nowTs - SIXTY_DAYS || ts > nowTs + 2 * 24 * 3600 * 1000)) {\n    date = classify.today;\n    dateAdjusted = true;\n  }\n} else {\n  date = classify.today; // missing or malformed date -> silent fallback\n}\n\nscanOK = !error;\n\nreturn [{ json: { scanOK, amount, date, merchant, category, error, dateAdjusted, originalDate, chatId: classify.chatId, userId: classify.userId } }];"
+        "jsCode": "const classify = $('Classify Update').first().json;\n\nlet scanOK = false;\nlet amount = 0;\nlet date = '';\nlet merchant = '';\nlet category = '';\nlet error = '';\nlet dateAdjusted = false;\nlet originalDate = '';\n\ntry {\n  const j = items[0].json;\n  // If the Gemini HTTP call itself failed (onError: continue passes {error} here),\n  // surface the REAL cause instead of the downstream JSON.parse message.\n  if (j && j.error && !j.candidates) {\n    const upstream = String(j.error);\n    if (/credential/i.test(upstream)) {\n      error = 'Gemini credential is not assigned - open the n8n editor, select the Header Auth (x-goog-api-key) credential on the Gemini Scan / Gemini Scan Fallback nodes';\n    } else if (/429/.test(upstream)) {\n      error = 'Gemini free-tier rate limit hit - wait about a minute, then send the photo again';\n    } else if (/40[0134]/.test(upstream)) {\n      error = 'Gemini API rejected the request: ' + upstream.slice(0, 180);\n    } else {\n      error = upstream.slice(0, 180);\n    }\n  } else {\n    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];\n    let text = parts.map(p => p.text || '').join('');\n    text = text.replace(/```json\\s*/gi, '').replace(/```/g, '').trim();\n    const parsed = JSON.parse(text);\n    amount = Number(parsed.amount);\n    date = String(parsed.date || '').trim();\n    merchant = String(parsed.merchant || '').trim();\n    category = String(parsed.category || '').trim();\n  }\n} catch (e) {\n  error = (e && e.message) ? e.message : 'Failed to parse scan result';\n}\n\n// Amount sanity: reject obvious misreads (line items, phone numbers, tax IDs)\nif (!error && (!isFinite(amount) || amount <= 0)) {\n  error = 'No valid amount found on receipt';\n} else if (!error && amount > 5000000) {\n  error = 'Amount looks wrong (over 50 lakh) - re-check with a clearer photo';\n}\n\n// Merchant sanity: drop placeholder junk Gemini sometimes echoes\nif (/^(store name|merchant|merchant name|n\\/?a|na|none|unknown|\\-+|\\.*|\\s*)$/i.test(merchant)) {\n  merchant = '';\n}\n\n// Date sanity: valid format, not far in the past, not in the future.\n// The website dashboard is month-scoped, so stale/future dates are filed under today instead.\noriginalDate = date;\nconst nowTs = new Date(classify.today + 'T00:00:00Z').getTime();\nconst SIXTY_DAYS = 60 * 24 * 3600 * 1000;\nif (/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) {\n  const ts = new Date(date + 'T00:00:00Z').getTime();\n  if (!isNaN(ts) && (ts < nowTs - SIXTY_DAYS || ts > nowTs + 2 * 24 * 3600 * 1000)) {\n    date = classify.today;\n    dateAdjusted = true;\n  }\n} else {\n  date = classify.today; // missing or malformed date -> silent fallback\n}\n\nscanOK = !error;\n\nreturn [{ json: { scanOK, amount, date, merchant, category, error, dateAdjusted, originalDate, chatId: classify.chatId, userId: classify.userId } }];"
       }
     },
     {
-      "id": "node-14-o34xk2",
+      "id": "node-14-gjpq7v",
       "name": "Scan OK Fallback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -930,7 +930,7 @@
       }
     },
     {
-      "id": "node-15-vupamg",
+      "id": "node-15-ml26m2",
       "name": "Reply Scan Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -950,7 +950,7 @@
       }
     },
     {
-      "id": "node-16-mxgs6v",
+      "id": "node-16-eftg68",
       "name": "Build Scan Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -964,7 +964,7 @@
       }
     },
     {
-      "id": "node-17-wum6zu",
+      "id": "node-17-7m8bfs",
       "name": "Send Scan Confirmation",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1011,7 +1011,7 @@
       }
     },
     {
-      "id": "node-18-gvt2ae",
+      "id": "node-18-qzgwet",
       "name": "Answer Callback",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1027,7 +1027,7 @@
       }
     },
     {
-      "id": "node-19-9mplkb",
+      "id": "node-19-gojb0q",
       "name": "Read Callback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1041,7 +1041,7 @@
       }
     },
     {
-      "id": "node-20-um6s2v",
+      "id": "node-20-5nehp1",
       "name": "Is Save?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1075,7 +1075,7 @@
       }
     },
     {
-      "id": "node-21-3wxn42",
+      "id": "node-21-32zkw6",
       "name": "Reply Callback Result",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1095,7 +1095,7 @@
       }
     },
     {
-      "id": "node-22-yc70f8",
+      "id": "node-22-mk3a6h",
       "name": "Build NL Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1109,7 +1109,7 @@
       }
     },
     {
-      "id": "node-23-wxzllj",
+      "id": "node-23-qdyhsi",
       "name": "Gemini NL Parse",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1133,7 +1133,7 @@
       }
     },
     {
-      "id": "node-24-oax81e",
+      "id": "node-24-7sr1tf",
       "name": "Parse NL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1147,7 +1147,7 @@
       }
     },
     {
-      "id": "node-25-zqnt3d",
+      "id": "node-25-b9f9e4",
       "name": "NL Expense?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1181,7 +1181,7 @@
       }
     },
     {
-      "id": "node-26-acsrr3",
+      "id": "node-26-p76i7u",
       "name": "Build Edit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1195,7 +1195,7 @@
       }
     },
     {
-      "id": "node-27-ro9uyz",
+      "id": "node-27-coov3o",
       "name": "Write Edit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1218,7 +1218,7 @@
       }
     },
     {
-      "id": "node-28-65nrc4",
+      "id": "node-28-lrbjox",
       "name": "Reply Edit",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1238,7 +1238,7 @@
       }
     },
     {
-      "id": "node-29-9m8e16",
+      "id": "node-29-nf2p85",
       "name": "Build Ask Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1252,7 +1252,7 @@
       }
     },
     {
-      "id": "node-30-cfl93k",
+      "id": "node-30-18wrvz",
       "name": "Gemini Ask",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1276,7 +1276,7 @@
       }
     },
     {
-      "id": "node-31-lh63o1",
+      "id": "node-31-5xq6wx",
       "name": "Build Ask Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1290,7 +1290,7 @@
       }
     },
     {
-      "id": "node-32-g095gr",
+      "id": "node-32-q2iwzo",
       "name": "Register Bot Menu",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1311,7 +1311,7 @@
       }
     },
     {
-      "id": "node-33-j9e3mk",
+      "id": "node-33-u5x5ry",
       "name": "Reply Menu",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1331,7 +1331,7 @@
       }
     },
     {
-      "id": "node-34-phe28h",
+      "id": "node-34-b7wyu9",
       "name": "Is Album Photo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1365,7 +1365,7 @@
       }
     },
     {
-      "id": "node-35-6csz9i",
+      "id": "node-35-hiwxlt",
       "name": "Query Categories",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1385,7 +1385,7 @@
       }
     },
     {
-      "id": "node-36-9fr701",
+      "id": "node-36-hq420a",
       "name": "Collect Categories",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1399,7 +1399,7 @@
       }
     },
     {
-      "id": "node-37-jrxyn7",
+      "id": "node-37-tk2xcz",
       "name": "Query Household",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1419,7 +1419,7 @@
       }
     },
     {
-      "id": "node-38-a00o5m",
+      "id": "node-38-6tbxxh",
       "name": "Build Transaction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1433,7 +1433,7 @@
       }
     },
     {
-      "id": "node-39-wgvim3",
+      "id": "node-39-j859ta",
       "name": "Create Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1456,7 +1456,7 @@
       }
     },
     {
-      "id": "node-40-fn0fqd",
+      "id": "node-40-ox076p",
       "name": "Build Budget Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1470,7 +1470,7 @@
       }
     },
     {
-      "id": "node-41-13nmvl",
+      "id": "node-41-glnyhi",
       "name": "Query Budgets",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1490,7 +1490,7 @@
       }
     },
     {
-      "id": "node-42-mzsjyu",
+      "id": "node-42-yfijh3",
       "name": "Collect Budgets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1504,7 +1504,7 @@
       }
     },
     {
-      "id": "node-43-cb7e1a",
+      "id": "node-43-bx8yeu",
       "name": "Query Month Transactions (Budget)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1524,7 +1524,7 @@
       }
     },
     {
-      "id": "node-44-jacbmy",
+      "id": "node-44-mm5egt",
       "name": "Budget Check & Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1538,7 +1538,7 @@
       }
     },
     {
-      "id": "node-45-rprpaf",
+      "id": "node-45-2k9eu9",
       "name": "Send Expense Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1558,7 +1558,7 @@
       }
     },
     {
-      "id": "node-46-3az8sb",
+      "id": "node-46-zvndwg",
       "name": "Query Household (Income)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1578,7 +1578,7 @@
       }
     },
     {
-      "id": "node-47-q5dpxd",
+      "id": "node-47-tu6rm6",
       "name": "Build Income Entry",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1592,7 +1592,7 @@
       }
     },
     {
-      "id": "node-48-tdt8xl",
+      "id": "node-48-kdfk0w",
       "name": "Create Income Entry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1615,7 +1615,7 @@
       }
     },
     {
-      "id": "node-49-715iwu",
+      "id": "node-49-1e2f1m",
       "name": "Reply Income",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1635,7 +1635,7 @@
       }
     },
     {
-      "id": "node-50-g35lhb",
+      "id": "node-50-q4cld0",
       "name": "Query Month Transactions (Summary)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1655,7 +1655,7 @@
       }
     },
     {
-      "id": "node-51-d29v19",
+      "id": "node-51-j8ehcj",
       "name": "Collect Summary Tx",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1669,7 +1669,7 @@
       }
     },
     {
-      "id": "node-52-91m6nd",
+      "id": "node-52-02rjvq",
       "name": "Query Month Incomes",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1689,7 +1689,7 @@
       }
     },
     {
-      "id": "node-53-okf5q0",
+      "id": "node-53-gkkz1f",
       "name": "Build Summary Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1703,7 +1703,7 @@
       }
     },
     {
-      "id": "node-54-atfnz3",
+      "id": "node-54-si5epa",
       "name": "Send Summary Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1723,7 +1723,7 @@
       }
     },
     {
-      "id": "node-55-gqr5s2",
+      "id": "node-55-bdqwq5",
       "name": "Query Invites",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1743,7 +1743,7 @@
       }
     },
     {
-      "id": "node-56-vlrww1",
+      "id": "node-56-p289g2",
       "name": "Validate Invite",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1757,7 +1757,7 @@
       }
     },
     {
-      "id": "node-57-vemxjh",
+      "id": "node-57-q9jc6q",
       "name": "Invite Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1791,7 +1791,7 @@
       }
     },
     {
-      "id": "node-58-1qo9ni",
+      "id": "node-58-5w9aw1",
       "name": "Create or Update Membership",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1811,7 +1811,7 @@
       }
     },
     {
-      "id": "node-59-vlxgzg",
+      "id": "node-59-irj72a",
       "name": "Mark Invite Accepted",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1832,7 +1832,7 @@
       }
     },
     {
-      "id": "node-60-z7jo0y",
+      "id": "node-60-lgo2vf",
       "name": "Reply Join Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1852,7 +1852,7 @@
       }
     },
     {
-      "id": "node-61-am1fwh",
+      "id": "node-61-fxc45a",
       "name": "Reply Join Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1872,7 +1872,7 @@
       }
     },
     {
-      "id": "node-62-ubij6f",
+      "id": "node-62-pex8fw",
       "name": "Query My Transactions",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1892,7 +1892,7 @@
       }
     },
     {
-      "id": "node-63-bac6il",
+      "id": "node-63-drso8x",
       "name": "Build Undo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1906,7 +1906,7 @@
       }
     },
     {
-      "id": "node-64-74pvzu",
+      "id": "node-64-ywaas8",
       "name": "Delete Last Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1926,7 +1926,7 @@
       }
     },
     {
-      "id": "node-65-dznz8k",
+      "id": "node-65-ckgyld",
       "name": "Reply Undo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1946,7 +1946,7 @@
       }
     },
     {
-      "id": "node-66-9238n2",
+      "id": "node-66-04um3j",
       "name": "Build Recent Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1960,7 +1960,7 @@
       }
     },
     {
-      "id": "node-67-i3mifd",
+      "id": "node-67-uoo78e",
       "name": "Build Export CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1974,7 +1974,7 @@
       }
     },
     {
-      "id": "node-68-2jcf33",
+      "id": "node-68-uvkdep",
       "name": "Send Export Document",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1991,7 +1991,7 @@
       }
     },
     {
-      "id": "node-69-kj6laa",
+      "id": "node-69-xgksy7",
       "name": "Query Categories (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2011,7 +2011,7 @@
       }
     },
     {
-      "id": "node-70-pkw5xr",
+      "id": "node-70-rr8d72",
       "name": "Build Categories Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2025,7 +2025,7 @@
       }
     },
     {
-      "id": "node-71-4fztww",
+      "id": "node-71-7av929",
       "name": "Query Household (Hub)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2045,7 +2045,7 @@
       }
     },
     {
-      "id": "node-72-e5tlkz",
+      "id": "node-72-9vxttp",
       "name": "Dispatch After Household",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -2326,7 +2326,7 @@
       }
     },
     {
-      "id": "node-73-najkwa",
+      "id": "node-73-eut967",
       "name": "Query Month Budgets (Set)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2346,7 +2346,7 @@
       }
     },
     {
-      "id": "node-74-1w8zx7",
+      "id": "node-74-7bzuwu",
       "name": "Build Budget Set",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2360,7 +2360,7 @@
       }
     },
     {
-      "id": "node-75-mvy7zz",
+      "id": "node-75-a0erfx",
       "name": "Reply Budget Set",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2380,7 +2380,7 @@
       }
     },
     {
-      "id": "node-76-d3ksph",
+      "id": "node-76-al2ovd",
       "name": "Query Budgets (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2400,7 +2400,7 @@
       }
     },
     {
-      "id": "node-77-q5hi92",
+      "id": "node-77-90g03x",
       "name": "Collect Budgets (List)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2414,7 +2414,7 @@
       }
     },
     {
-      "id": "node-78-7lj6zu",
+      "id": "node-78-jyh2pw",
       "name": "Query Month Tx (Budgets List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2434,7 +2434,7 @@
       }
     },
     {
-      "id": "node-79-ekhruk",
+      "id": "node-79-xjcd8h",
       "name": "Build Budgets Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2448,7 +2448,7 @@
       }
     },
     {
-      "id": "node-80-7zjcl0",
+      "id": "node-80-ltb63r",
       "name": "Build Goal",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2462,7 +2462,7 @@
       }
     },
     {
-      "id": "node-81-zyct4e",
+      "id": "node-81-8c1snh",
       "name": "Reply Goal",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2482,7 +2482,7 @@
       }
     },
     {
-      "id": "node-82-5q4xwj",
+      "id": "node-82-yzlyh5",
       "name": "Prep Goals Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2496,7 +2496,7 @@
       }
     },
     {
-      "id": "node-83-oqp6gd",
+      "id": "node-83-m4j5l5",
       "name": "Query Goals",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2516,7 +2516,7 @@
       }
     },
     {
-      "id": "node-84-s6zihv",
+      "id": "node-84-zq73sj",
       "name": "Build Contribute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2530,7 +2530,7 @@
       }
     },
     {
-      "id": "node-85-wnuhoi",
+      "id": "node-85-658cu6",
       "name": "Goal Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -2564,7 +2564,7 @@
       }
     },
     {
-      "id": "node-86-ln79q5",
+      "id": "node-86-lr02zy",
       "name": "Reply Goal Not Found",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2584,7 +2584,7 @@
       }
     },
     {
-      "id": "node-87-0bdpbq",
+      "id": "node-87-epkv2k",
       "name": "Reply Contribute",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2604,7 +2604,7 @@
       }
     },
     {
-      "id": "node-88-rw0qa0",
+      "id": "node-88-y5w15y",
       "name": "Build Goals Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2618,7 +2618,7 @@
       }
     },
     {
-      "id": "node-89-wo2yqw",
+      "id": "node-89-1t97pc",
       "name": "Build Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2632,7 +2632,7 @@
       }
     },
     {
-      "id": "node-90-z9psqw",
+      "id": "node-90-9itr2f",
       "name": "Reply Recurring",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2652,7 +2652,7 @@
       }
     },
     {
-      "id": "node-91-3310wd",
+      "id": "node-91-ic5bx1",
       "name": "Prep Recurrings Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2666,7 +2666,7 @@
       }
     },
     {
-      "id": "node-92-ekqgiy",
+      "id": "node-92-aw9k3f",
       "name": "Query Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2686,7 +2686,7 @@
       }
     },
     {
-      "id": "node-93-1opi8f",
+      "id": "node-93-zm7xhw",
       "name": "Build Recurrings Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2700,7 +2700,7 @@
       }
     },
     {
-      "id": "node-94-q0upe2",
+      "id": "node-94-v3m0gb",
       "name": "Build Loan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2714,7 +2714,7 @@
       }
     },
     {
-      "id": "node-95-u000qy",
+      "id": "node-95-mstjx3",
       "name": "Reply Loan",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2734,7 +2734,7 @@
       }
     },
     {
-      "id": "node-96-wjtvt0",
+      "id": "node-96-81eyau",
       "name": "Prep Loans Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2748,7 +2748,7 @@
       }
     },
     {
-      "id": "node-97-1qyv3a",
+      "id": "node-97-ekclnk",
       "name": "Query Loans",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2768,7 +2768,7 @@
       }
     },
     {
-      "id": "node-98-qij6c3",
+      "id": "node-98-oeuvua",
       "name": "Build Loans Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2782,7 +2782,7 @@
       }
     },
     {
-      "id": "node-99-mpj0m8",
+      "id": "node-99-l2l14a",
       "name": "Prep Members Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2796,7 +2796,7 @@
       }
     },
     {
-      "id": "node-100-sfo63j",
+      "id": "node-100-45pt2p",
       "name": "Query Members",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2816,7 +2816,7 @@
       }
     },
     {
-      "id": "node-101-2t7on2",
+      "id": "node-101-jz2i37",
       "name": "Build Members Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2830,7 +2830,7 @@
       }
     },
     {
-      "id": "node-102-1qk8m6",
+      "id": "node-102-vo05nz",
       "name": "Prep Investments Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2844,7 +2844,7 @@
       }
     },
     {
-      "id": "node-103-fbamj7",
+      "id": "node-103-cwuzqp",
       "name": "Query Investment Accounts",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2864,7 +2864,7 @@
       }
     },
     {
-      "id": "node-104-i83mf0",
+      "id": "node-104-czunnh",
       "name": "Build Investments Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2878,7 +2878,7 @@
       }
     },
     {
-      "id": "node-105-5xwvfs",
+      "id": "node-105-0d74p2",
       "name": "Write Budget",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2901,7 +2901,7 @@
       }
     },
     {
-      "id": "node-106-di6bey",
+      "id": "node-106-oku4ku",
       "name": "Write Contribution",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2924,7 +2924,7 @@
       }
     },
     {
-      "id": "node-107-ijswax",
+      "id": "node-107-qo8vfl",
       "name": "Write Loan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2947,7 +2947,7 @@
       }
     },
     {
-      "id": "node-108-sicg2k",
+      "id": "node-108-u92w3c",
       "name": "Write Recurring Batch",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2970,7 +2970,7 @@
       }
     },
     {
-      "id": "node-109-52o7wi",
+      "id": "node-109-35otvp",
       "name": "Create Goal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2993,7 +2993,7 @@
       }
     },
     {
-      "id": "node-110-qxrqlr",
+      "id": "node-110-ueunzu",
       "name": "Create Recurring Rule",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3016,7 +3016,7 @@
       }
     },
     {
-      "id": "node-111-9txvxu",
+      "id": "node-111-p3e4t7",
       "name": "Send List Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -3036,7 +3036,7 @@
       }
     },
     {
-      "id": "node-112-zygyda",
+      "id": "node-112-wqesma",
       "name": "Daily 9AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -3056,7 +3056,7 @@
       }
     },
     {
-      "id": "node-113-lrft78",
+      "id": "node-113-5mi73i",
       "name": "Query Due Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -3076,7 +3076,7 @@
       }
     },
     {
-      "id": "node-114-r1dd4s",
+      "id": "node-114-57fdjo",
       "name": "Process Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3090,7 +3090,7 @@
       }
     },
     {
-      "id": "node-115-mhlfd1",
+      "id": "node-115-tq6ga9",
       "name": "Send Help",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,

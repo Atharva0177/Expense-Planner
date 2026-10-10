@@ -3,6 +3,25 @@
 
 // Normalize the incoming Telegram update into a single routing payload.
 const update = items[0].json;
+// Inline-keyboard button presses arrive as callback_query updates
+const cbq = update.callback_query;
+if (cbq) {
+  const chatId = cbq.message && cbq.message.chat ? cbq.message.chat.id : null;
+  const cUserId = 'telegram_' + (cbq.from ? cbq.from.id : '');
+  if (chatId === null) return [];
+  const data = String(cbq.data || '');
+  const parts = data.split(':'); // e.g. scan:save:<id>
+  return [{ json: {
+    chatId,
+    userId: cUserId,
+    intent: 'callback',
+    cbAction: parts[1] || '',
+    cbId: parts[2] || '',
+    queryId: String(cbq.id || ''),
+    photoFileId: '',
+    today: new Date().toISOString().split('T')[0],
+  } }];
+}
 const msg = update.message || update.edited_message;
 if (!msg || !msg.from || !msg.chat) return [];
 
@@ -24,6 +43,8 @@ if (photoSizes.length > 0) {
 } else if (imgDoc) {
   photoFileId = String(imgDoc.file_id || '');
 }
+// Album detection: Telegram sends each album photo as its own message with a shared media_group_id
+const mediaGroupId = String(msg.media_group_id || '');
 
 const today = new Date().toISOString().split('T')[0];
 const month = today.slice(0, 7);
@@ -189,6 +210,34 @@ if (HELP.test(text)) {
 if (photoFileId) {
   out.intent = 'photo';
   out.photoFileId = photoFileId;
+  out.mediaGroupId = mediaGroupId;
+  return [{ json: out, binary: items[0].binary }];
+}
+
+// New bot commands: /edit <field> <value>, /ask <question>, /setup-menu
+const ed = text.match(/^\/edit\s+(amount|note|category|date)\s+(.+)$/i);
+if (ed) {
+  out.intent = 'edit';
+  out.editField = ed[1].toLowerCase();
+  out.editValue = ed[2].trim();
+  return [{ json: out, binary: items[0].binary }];
+}
+const ak = text.match(/^\/ask\s+(.+)$/i);
+if (ak) {
+  out.intent = 'ask';
+  out.askQuestion = ak[1].trim();
+  return [{ json: out, binary: items[0].binary }];
+}
+if (/^\/setup-menu$/i.test(text)) {
+  out.intent = 'setup_menu';
+  return [{ json: out, binary: items[0].binary }];
+}
+
+// Natural-language expense logging: plain (non-slash) short text goes to
+// the Gemini parser instead of the fallback message.
+if (!text.startsWith('/') && text.length > 2 && text.length <= 120) {
+  out.intent = 'nl_parse';
+  out.nlText = text;
   return [{ json: out, binary: items[0].binary }];
 }
 

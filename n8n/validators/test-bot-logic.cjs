@@ -209,6 +209,9 @@ const classifyOut = runCode("Classify Update", mkUpdate("/spent 250 groceries bi
   // upstream HTTP errors surface with friendly messages
   const q429 = fn([{ json: { error: '429 - {"error":{"code":429,"message":"Resource exhausted"}}' } }], $)[0].json;
   check("parse scan surfaces 429", q429.scanOK === false && q429.error.includes("rate limit"), q429);
+
+  const creds = fn([{ json: { error: "Credentials not found for 'httpHeaderAuth'" } }], $)[0].json;
+  check("parse scan flags missing credential", creds.scanOK === false && creds.error.includes("Header Auth"), creds.error);
   const e404 = fn([{ json: { error: '404 - {"error":{"code":404,"message":"model not found"}}' } }], $)[0].json;
   check("parse scan surfaces 404", e404.scanOK === false && e404.error.includes("Gemini API rejected"), e404);
   const noAmount = fn([{ json: { candidates: [{ content: { parts: [{ text: '{"amount": 0, "date": "", "merchant": "", "category": ""}' }] } }] } }], $)[0].json;
