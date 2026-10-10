@@ -126,6 +126,8 @@ async function getHhId(userId: string): Promise<string | undefined> {
     // Self-heal the deterministic membership anchor
     // (household_members/{uid}) - the Firestore security rules use this path
     // to verify household access for every household-scoped read.
+    // Identity fields (email/role) are carried over from the membership doc
+    // so a fresh anchor is complete - not just {household_id, user_id}.
     if (id) {
       try {
         const anchorRef = doc(db, "household_members", userId);
@@ -134,7 +136,12 @@ async function getHhId(userId: string): Promise<string | undefined> {
         if (!anchorData || anchorData.household_id !== id) {
           await setDoc(
             anchorRef,
-            { household_id: id, user_id: userId },
+            {
+              household_id: id,
+              user_id: userId,
+              ...(member?.email ? { email: member.email } : {}),
+              ...(member?.role ? { role: member.role } : {}),
+            },
             { merge: true },
           );
         }

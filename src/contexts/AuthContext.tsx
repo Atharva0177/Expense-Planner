@@ -6,6 +6,7 @@ import {
   getHouseholdMembership,
   getHousehold,
   createHousehold,
+  backfillMembershipIdentity,
 } from "../lib/db_household";
 
 interface AuthContextType {
@@ -55,6 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (member) {
           const hh = await getHousehold(member.household_id);
           setHousehold(hh);
+
+          // Repair membership anchors that lost their identity (email/role)
+          // during the security-rules migration - backfills email from the
+          // Auth profile and role for the household's creator
+          if (!member.email || !member.role) {
+            await backfillMembershipIdentity(
+              currentUser.uid,
+              currentUser.email || "",
+              !!hh && hh.created_by === currentUser.uid,
+            );
+            member = await getHouseholdMembership(currentUser.uid);
+            setHouseholdMember(member);
+          }
         }
       };
 

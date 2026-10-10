@@ -183,11 +183,33 @@ export async function getHouseholdMembership(
       if (snapshot.empty) return null;
 
       // Self-heal dedup: if the anchor doc exists alongside legacy rows,
-      // delete the legacy rows so the member list shows each person once.
+      // rescue any identity fields (email/role) the anchor is missing from
+      // the legacy row FIRST, then delete the legacy rows so the member
+      // list shows each person once.
       const anchorDoc = snapshot.docs.find((d) => d.id === userId);
       if (anchorDoc) {
         const duplicates = snapshot.docs.filter((d) => d.id !== userId);
+        let patch: Record<string, unknown> = {};
         if (duplicates.length > 0) {
+          const anchorData = (anchorDoc.data() || {}) as Record<string, unknown>;
+          const legacy = (duplicates[0].data() || {}) as Record<string, unknown>;
+          patch = {};
+          if (!anchorData.email && legacy.email) patch.email = legacy.email;
+          if (!anchorData.role && legacy.role) patch.role = legacy.role;
+          if (!anchorData.joined_at && legacy.joined_at)
+            patch.joined_at = legacy.joined_at;
+          if (Object.keys(patch).length > 0) {
+            try {
+              await setDoc(
+                doc(db, "household_members", userId),
+                patch,
+                { merge: true },
+              );
+            } catch (e) {
+              console.warn("Anchor identity rescue skipped", e);
+              patch = {};
+            }
+          }
           for (const dup of duplicates) {
             try {
               await deleteDoc(doc(db, "household_members", dup.id));
@@ -196,7 +218,11 @@ export async function getHouseholdMembership(
             }
           }
         }
-        return { id: anchorDoc.id, ...anchorDoc.data() } as HouseholdMember;
+        return {
+          id: anchorDoc.id,
+          ...anchorDoc.data(),
+          ...patch,
+        } as HouseholdMember;
       }
       return {
         id: snapshot.docs[0].id,
@@ -207,6 +233,40 @@ export async function getHouseholdMembership(
       return null;
     }
   });
+}
+
+/**
+ * Backfills missing identity fields (email/role) on the membership anchor.
+ * Repairs anchors that were created by the minimal self-heal write
+ * ({household_id, user_id} only) whose richer legacy row was later removed
+ * by the dedup - email comes from the Firebase Auth profile, role defaults
+ * to "primary" only for the household's creator. Best-effort, never throws.
+ */
+export async function backfillMembershipIdentity(
+  userId: string,
+  authEmail: string,
+  isFounder: boolean,
+): Promise<void> {
+  try {
+    const anchorRef = doc(db, "household_members", userId);
+    const snap = await getDoc(anchorRef);
+    if (!snap.exists()) return; // nothing to backfill
+
+    const data = (snap.data() || {}) as Partial<HouseholdMember>;
+    const patch: Record<string, unknown> = {};
+    if ((!data.email || data.email === "") && authEmail) {
+      patch.email = authEmail;
+    }
+    if (!data.role && isFounder) {
+      patch.role = "primary";
+    }
+    if (Object.keys(patch).length === 0) return;
+
+    await setDoc(anchorRef, patch, { merge: true });
+    clearHouseholdCache(`member_${userId}`);
+  } catch (e) {
+    console.warn("Membership identity backfill skipped", e);
+  }
 }
 
 export async function getHousehold(
