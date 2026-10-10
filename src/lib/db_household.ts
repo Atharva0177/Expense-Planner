@@ -6,6 +6,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  setDoc,
   deleteDoc,
   doc,
   Timestamp,
@@ -74,7 +75,7 @@ export async function createHousehold(
       created_at: Timestamp.now(),
     });
 
-    // Check if user already has an existing membership record
+    // Check if user already has an existing legacy membership record
     const existingQ = query(
       collection(db, "household_members"),
       where("user_id", "==", userId),
@@ -96,6 +97,20 @@ export async function createHousehold(
         joined_at: Timestamp.now(),
       });
     }
+
+    // Keep the deterministic membership anchor (household_members/{uid}) in
+    // sync - the Firestore security rules use it to verify household access.
+    await setDoc(
+      doc(db, "household_members", userId),
+      {
+        household_id: docRef.id,
+        user_id: userId,
+        email,
+        role: "primary",
+        joined_at: Timestamp.now(),
+      },
+      { merge: true },
+    );
 
     clearHouseholdCache();
     clearCache();
@@ -134,6 +149,8 @@ export async function leaveHousehold(userId: string): Promise<boolean> {
     for (const d of snapshot.docs) {
       await deleteDoc(doc(db, "household_members", d.id));
     }
+    // Also clear the deterministic anchor doc (security rules read this path)
+    await deleteDoc(doc(db, "household_members", userId));
     clearHouseholdCache();
     clearCache();
     return true;
@@ -215,7 +232,9 @@ export async function createInvite(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await addDoc(collection(db, "invites"), {
+    // Deterministic doc id = invite code, so the security rules can verify a
+    // pending invite by path during household join (no queries in rules).
+    await setDoc(doc(db, "invites", inviteCode), {
       household_id: householdId,
       email,
       invite_code: inviteCode,
@@ -239,44 +258,33 @@ export async function checkAndAcceptInvite(
   inviteCode: string,
 ): Promise<boolean> {
   try {
-    const q = query(
-      collection(db, "invites"),
-      where("invite_code", "==", inviteCode),
-      where("status", "==", "pending"),
-    );
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return false;
+    // Look the invite up by its deterministic path (id = invite code)
+    const inviteRef = doc(db, "invites", inviteCode);
+    const inviteSnap = await getDoc(inviteRef);
+    if (!inviteSnap.exists()) return false;
 
-    const inviteDoc = snapshot.docs[0];
-    const inviteData = inviteDoc.data() as Invite;
+    const inviteData = inviteSnap.data() as Invite;
+    if (inviteData.status !== "pending") return false;
 
-    // Upsert membership
-    const existingQ = query(
-      collection(db, "household_members"),
-      where("user_id", "==", userId),
-    );
-    const existingSnap = await getDocs(existingQ);
-    if (!existingSnap.empty) {
-      await updateDoc(doc(db, "household_members", existingSnap.docs[0].id), {
-        household_id: inviteData.household_id,
-        email: email || inviteData.email,
-        role: inviteData.role || "dependent",
-        custom_role_description: inviteData.custom_role_description || null,
-        joined_at: Timestamp.now(),
-      });
-    } else {
-      await addDoc(collection(db, "household_members"), {
+    // Upsert the deterministic membership anchor. The invite_code field is
+    // included as capability proof - the security rules verify it against the
+    // pending invite before allowing this write.
+    await setDoc(
+      doc(db, "household_members", userId),
+      {
         household_id: inviteData.household_id,
         user_id: userId,
         email: email || inviteData.email,
         role: inviteData.role || "dependent",
         custom_role_description: inviteData.custom_role_description || null,
         joined_at: Timestamp.now(),
-      });
-    }
+        invite_code: inviteCode,
+      },
+      { merge: true },
+    );
 
-    // Mark accepted
-    await updateDoc(doc(db, "invites", inviteDoc.id), { status: "accepted" });
+    // Mark accepted AFTER the membership write (the rule required it pending)
+    await updateDoc(inviteRef, { status: "accepted" });
     clearHouseholdCache();
     clearCache();
     return true;

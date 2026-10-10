@@ -1,134 +1,124 @@
-// Cloudflare Pages / Workers Serverless Function for POST /api/scan-receipt
-export interface CloudflareEnv {
-  GEMINI_API_KEY?: string;
-  [key: string]: any;
-}
+import { GoogleGenAI, Type } from "@google/genai";
 
-export async function onRequestPost(context: {
-  request: Request;
-  env: CloudflareEnv;
-}) {
+// Security: only well-known image mime types, and a hard cap on the payload.
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "image/gif",
+]);
+const MAX_BASE64_LENGTH = 20 * 1024 * 1024;
+
+export async function onRequestPost(context: any) {
   const { request, env } = context;
 
-  // CORS headers if needed
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
-
   try {
-    const apiKey =
-      env.GEMINI_API_KEY ||
-      (typeof process !== "undefined" ? process.env?.GEMINI_API_KEY : "");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "GEMINI_API_KEY environment variable is not configured in Cloudflare. Please go to Cloudflare Pages Dashboard -> Settings -> Environment Variables and add GEMINI_API_KEY.",
-        }),
-        { status: 500, headers },
-      );
-    }
+    const { imageBase64, mimeType } = await request.json();
 
-    const { imageBase64, mimeType } = (await request.json()) as {
-      imageBase64?: string;
-      mimeType?: string;
-    };
-    if (!imageBase64) {
-      return new Response(
-        JSON.stringify({ error: "Missing image data in request" }),
-        { status: 400, headers },
-      );
-    }
-
-    let normalizedMimeType = mimeType || "image/jpeg";
-    if (!normalizedMimeType.startsWith("image/")) {
-      normalizedMimeType = "image/jpeg";
-    }
-
-    const candidateModels = [
-      "gemini-2.5-flash",
-      "gemini-flash-latest",
-      "gemini-3.7-flash",
-      "gemini-2.5-flash-lite",
-    ];
-    let parsedResult: any = null;
-    let lastError: any = null;
-
-    for (const model of candidateModels) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    inlineData: {
-                      mimeType: normalizedMimeType,
-                      data: imageBase64,
-                    },
-                  },
-                  {
-                    text: "Analyze this image of a purchase receipt, bill, invoice, or payment confirmation. Extract the total paid amount in numerical format (INR/₹ or standard currency), the transaction date (YYYY-MM-DD), the merchant or vendor name, and the best-fitting expense category (e.g. Food, Groceries, Shopping, Travel, Bills, Healthcare, Entertainment, Utilities, Education, or Other). Respond strictly with valid JSON having the exact keys: amount (number), date (string), merchant (string), category (string).",
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: "application/json",
-            },
-          }),
-        });
-
-        if (res.ok) {
-          const resData: any = await res.json();
-          const rawText =
-            resData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-          const cleanedText = rawText
-            .replace(/```json\s*/gi, "")
-            .replace(/```/g, "")
-            .trim();
-          parsedResult = JSON.parse(cleanedText);
-          if (parsedResult) break;
-        } else {
-          lastError = await res.json().catch(() => ({ status: res.status }));
-        }
-      } catch (e: any) {
-        lastError = e;
-      }
-    }
-
-    if (!parsedResult) {
-      const errMsg =
-        lastError?.error?.message ||
-        "Failed to process receipt with Gemini model on Cloudflare.";
-      return new Response(JSON.stringify({ error: errMsg }), {
-        status: 500,
-        headers,
+    if (!imageBase64 || typeof imageBase64 !== "string") {
+      return new Response(JSON.stringify({ error: "Missing image data" }), {
+        status: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+        },
       });
     }
 
-    return new Response(JSON.stringify(parsedResult), { status: 200, headers });
-  } catch (err: any) {
+    if (imageBase64.length > MAX_BASE64_LENGTH) {
+      return new Response(JSON.stringify({ error: "Image is too large" }), {
+        status: 413,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+
+    let normalizedMimeType =
+      (typeof mimeType === "string" && mimeType) || "image/jpeg";
+    normalizedMimeType = normalizedMimeType.split(";")[0].trim().toLowerCase();
+    if (!ALLOWED_MIME_TYPES.has(normalizedMimeType)) {
+      return new Response(
+        JSON.stringify({
+          error: "Unsupported image type. Use JPEG, PNG, WebP, HEIC, HEIF or GIF.",
+        }),
+        {
+          status: 415,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      );
+    }
+
+    if (!env.GEMINI_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Content-Type-Options": "nosniff",
+          },
+        },
+      );
+    }
+
+    const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+    const models = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"];
+
+    let lastError: any;
+    for (const model of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 800));
+          const response = await ai.models.generateContent({
+            model,
+            contents: { parts: [{ inlineData: { data: imageBase64, mimeType: normalizedMimeType } }, { text: "Analyze this receipt. Extract: amount (number), date (YYYY-MM-DD), merchant, category (Food, Groceries, Shopping, Travel, Bills, Healthcare, Entertainment, Utilities, Education, Other). Return JSON with keys: amount, date, merchant, category." }] },
+            config: { responseMimeType: "application/json", responseSchema: { type: Type.OBJECT, properties: { amount: { type: Type.NUMBER }, date: { type: Type.STRING }, merchant: { type: Type.STRING }, category: { type: Type.STRING } }, required: ["amount", "date", "merchant", "category"] } },
+          });
+
+          const parsed = JSON.parse((response.text || "{}").replace(/```json\s*/gi, "").replace(/```/g, "").trim());
+          if (parsed?.amount) {
+            return new Response(JSON.stringify(parsed), {
+              headers: {
+                "Content-Type": "application/json",
+                "X-Content-Type-Options": "nosniff",
+              },
+            });
+          }
+        } catch (err: any) {
+          lastError = err;
+          const msg = err?.message || String(err);
+          if (!msg.includes("503") && !msg.includes("429") && !msg.includes("high demand")) break;
+        }
+      }
+    }
+
+    throw lastError || new Error("Failed to scan receipt");
+  } catch (e: any) {
+    // Log details server-side; return a generic message (no implementation leaks)
+    console.error("scan-receipt error:", e?.message || e);
+    const transient =
+      String(e?.message || "").includes("503") ||
+      String(e?.message || "").includes("high demand");
     return new Response(
-      JSON.stringify({ error: err.message || "Internal server error" }),
-      { status: 500, headers },
+      JSON.stringify({
+        error: transient
+          ? "The receipt scanning AI service is temporarily experiencing high traffic. Please try again in a few seconds."
+          : "Failed to process receipt with AI model",
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Content-Type-Options": "nosniff",
+        },
+      },
     );
   }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
-  });
 }

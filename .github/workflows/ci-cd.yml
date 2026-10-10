@@ -50,7 +50,30 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test --if-present
+        run: npm test
+
+  bot-validate:
+    name: Bot Workflow Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Node-only validation - no npm install needed (validator scripts are
+      # plain CommonJS with zero dependencies)
+      - name: Validate n8n workflow structure, wiring, code & logic
+        run: npm run bot:validate
+
+      - name: Regenerate workflow JSON and check for drift
+        run: |
+          cp n8n/expense-planner-bot.json /tmp/bot-before.json
+          npm run bot:generate
+          node -e "const a=require('/tmp/bot-before.json');const b=require('./n8n/expense-planner-bot.json'); if (JSON.stringify(a.nodes.map(n=>[n.name,n.type]))!==JSON.stringify(b.nodes.map(n=>[n.name,n.type]))) { console.error('GENERATOR DRIFT: committed JSON does not match n8n/generate-workflow.cjs - run: npm run bot:generate && commit'); process.exit(1);} console.log('No drift - committed JSON matches the generator');"
 
   build:
     name: Build Application
@@ -160,6 +183,30 @@ jobs:
               repo: context.repo.repo,
               body: '🚀 Preview deployment ready: ${{ env.DEPLOYMENT_URL }}'
             })
+
+  deploy-bot:
+    name: Deploy n8n Bot Workflow
+    runs-on: ubuntu-latest
+    needs: [build, bot-validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Soft-skips when N8N_API_URL / N8N_API_KEY secrets are absent
+      # (the deploy script exits 0 with a notice). With secrets set, it
+      # pushes the workflow JSON to the live n8n, preserving credentials
+      # and activation state.
+      - name: Deploy workflow to n8n
+        env:
+          N8N_API_URL: ${{ secrets.N8N_API_URL }}
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: node n8n/scripts/deploy-workflow.mjs
 
   deploy-production:
     name: Deploy Production (Vercel)

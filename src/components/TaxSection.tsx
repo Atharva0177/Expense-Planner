@@ -248,7 +248,7 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
       {/* Top Banner & Financial Year Selection */}
       <div className="bg-white dark:bg-[#1A1A1A] border border-[#1A1A1A] dark:border-[#383838] p-4 sm:p-6 md:p-8 shadow-[4px_4px_0px_#1A1A1A] sm:shadow-[8px_8px_0px_#1A1A1A] dark:shadow-[8px_8px_0px_#000] relative">
         <span className="absolute -top-3 left-4 bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">
-          Direct Tax Planning Engine (Budget 2024 / FY 2024-25 & FY 2025-26)
+              Direct Tax Planning Engine (FY 2024-25 / 2025-26 / 2026-27, verified against Union Budget & Income Tax Act 2025)
         </span>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 border-b-2 border-[#1A1A1A] dark:border-[#383838] pb-4 gap-4 mt-2">
@@ -268,7 +268,7 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
               <span className="text-[9px] uppercase font-bold text-[#666] dark:text-[#AAA] px-1">
                 FY:
               </span>
-              {(["2024-25", "2025-26"] as const).map((fy) => (
+              {(["2024-25", "2025-26", "2026-27"] as const).map((fy) => (
                 <button
                   key={fy}
                   type="button"
@@ -571,12 +571,13 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 </span>
               </div>
               <span className="text-[10px] text-[#666] dark:text-[#AAA]">
-                {showCapitalGains ? "Hide ▲" : "Expand ▼"}
+                {showCapitalGains ? "Hide â–²" : "Expand ▼"}
               </span>
             </button>
 
             {showCapitalGains && (
               <CapitalGainsCalculator
+                financialYear={financialYear}
                 stcgEquity={stcgEquity}
                 setStcgEquity={setStcgEquity}
                 ltcgEquity={ltcgEquity}
@@ -601,7 +602,7 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
                 <span>Advance Tax Schedule & TDS Reconciliation</span>
               </div>
               <span className="text-[10px] text-[#666] dark:text-[#AAA]">
-                {showAdvanceTax ? "Hide ▲" : "Expand ▼"}
+                {showAdvanceTax ? "Hide â–²" : "Expand ▼"}
               </span>
             </button>
 
@@ -691,7 +692,10 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
 
               {result.new_regime.rebate_87a > 0 && (
                 <div className="flex justify-between border-b border-dotted border-[#1A1A1A] dark:border-[#444] pb-1 text-emerald-600 dark:text-emerald-400">
-                  <span>Section 87A Tax Rebate (Up to ₹7L)</span>
+                  <span>
+                    Section 87A Tax Rebate (Up to{" "}
+                    {financialYear === "2024-25" ? "₹7L" : "₹12L"})
+                  </span>
                   <span>
                     - ₹{result.new_regime.rebate_87a.toLocaleString("en-IN")}
                   </span>
@@ -885,8 +889,8 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
           </div>
           <p className="text-[11px] text-[#555] dark:text-[#AAA] leading-relaxed">
             {result.current_old_deductions >= result.breakeven_deductions
-              ? `✓ Your deductions (₹${result.current_old_deductions.toLocaleString("en-IN")}) exceed the breakeven point (₹${result.breakeven_deductions.toLocaleString("en-IN")}), making the Old Regime more profitable for you.`
-              : `→ You need an additional ₹${(result.breakeven_deductions - result.current_old_deductions).toLocaleString("en-IN")} in deductions to make the Old Regime cheaper than the New Regime.`}
+              ? `âœ“ Your deductions (₹${result.current_old_deductions.toLocaleString("en-IN")}) exceed the breakeven point (₹${result.breakeven_deductions.toLocaleString("en-IN")}), making the Old Regime more profitable for you.`
+              : `â†’ You need an additional ₹${(result.breakeven_deductions - result.current_old_deductions).toLocaleString("en-IN")} in deductions to make the Old Regime cheaper than the New Regime.`}
           </p>
         </div>
 
@@ -1004,3 +1008,4 @@ export function TaxSection({ currentMonth }: { currentMonth: string }) {
     </div>
   );
 }
+

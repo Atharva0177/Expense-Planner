@@ -1,12 +1,201 @@
 rules_version = '2';
+
+// Expense Planner - Firestore security rules
+//
+// Trust model:
+// - Every document is owned by a user (user_id) and optionally shared with a
+//   household (household_id).
+// - Household membership is anchored at a deterministic path:
+//     household_members/{uid}  ->  { user_id, household_id, role, ... }
+//   New memberships are written there by the app (setDoc); the bot's telegram
+//   membership uses its own deterministic id (telegram_<tg-id>) and is written
+//   via a service account, which bypasses these rules.
+// - Invites live at deterministic paths invites/{invite_code} so that rules can
+//   verify a pending invite during join without running queries.
+//
+// Write paths verified against the app: createHousehold (founder clause),
+// checkAndAcceptInvite (invite clause), updateMemberRole (member clause),
+// leaveHousehold (own delete), all data writes (owner-only writes).
+//
+// IMPORTANT for existing databases: a user whose only membership doc is a
+// legacy auto-ID doc will regain access automatically IF they created their
+// household (founder clause, satisfied via getHhId self-heal). For legacy
+// members who joined via invite, a one-time manual migration is needed:
+// create household_members/{uid} with their membership fields.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() {
+
+    function signedIn() {
       return request.auth != null;
     }
-    
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function myMembership() {
+      return get(/databases/$(database)/documents/household_members/$(uid())).data;
+    }
+
+    function isMember(householdId) {
+      return signedIn()
+        && householdId != null
+        && householdId == myMembership().household_id;
+    }
+
+    function ownsExisting() {
+      return signedIn() && resource.data.user_id == uid();
+    }
+
+    function ownsIncoming() {
+      return signedIn() && request.resource.data.user_id == uid();
+    }
+
+    function canRead() {
+      return ownsExisting() || isMember(resource.data.household_id);
+    }
+
+    // ---- Households ----
+    match /households/{householdId} {
+      allow read: if isMember(householdId);
+      allow create: if signedIn() && request.resource.data.created_by == uid();
+      allow update: if isMember(householdId);
+      allow delete: if false; // households are never deleted by the app
+    }
+
+    // ---- Household members (anchor doc: household_members/{uid}) ----
+    match /household_members/{memberId} {
+      allow read: if ownsExisting() || isMember(resource.data.household_id);
+
+      // Writes only to your own membership doc, and only when:
+      //  - you founded the household, or
+      //  - you are already a member of it (re-sync/no-op), or
+      //  - you present a valid pending invite for exactly that household.
+      allow create, update: if memberId == uid()
+        && ownsIncoming()
+        && request.resource.data.household_id != null
+        && (
+          get(/databases/$(database)/documents/households/$(request.resource.data.household_id)).data.created_by == uid()
+          || isMember(request.resource.data.household_id)
+          || (
+            request.resource.data.invite_code != null
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.status == 'pending'
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.household_id == request.resource.data.household_id
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.expires_at > request.time
+          )
+        );
+
+      // Users leave by deleting their own membership doc
+      allow delete: if ownsExisting() && memberId == uid();
+    }
+
+    // ---- Invites (deterministic doc id = invite code; the 6-char code is the
+    // secret, valid 7 days) ----
+    match /invites/{inviteCode} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isMember(request.resource.data.household_id);
+      // The invitee marks the invite accepted in checkAndAcceptInvite
+      allow update: if signedIn() && resource.data.status == 'pending';
+      allow delete: if false;
+    }
+
+    // ---- Categories ('system' docs are read-only defaults) ----
+    match /categories/{catId} {
+      allow read: if signedIn() && (resource.data.user_id == uid() || resource.data.user_id == 'system');
+      allow create: if ownsIncoming();
+      allow update: if ownsIncoming() && ownsExisting();
+      allow delete: if ownsExisting() && resource.data.user_id != 'system';
+    }
+
+    // ---- Owner-or-household collections ----
+    // Reads: owner or any household member. Writes: owner only (the app always
+    // stamps user_id with the acting user; shared edits are not a feature).
+    match /transactions/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /income_entries/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /budgets/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /recurring_rules/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /loans/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /loan_schedules/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /goals/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /tax_calculations/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /investment_accounts/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /investment_holdings/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    match /investment_valuations/{docId} {
+      allow read: if canRead();
+      allow create: if ownsIncoming();
+      allow update, delete: if ownsExisting();
+    }
+
+    // ---- Receipt photo attachments (stored IN Firestore - free tier friendly;
+    // one doc per transaction, lazy-loaded on paperclip click) ----
+    match /receipt_photos/{photoId} {
+      // Owner or any household member can view a family member's receipts
+      allow read: if ownsExisting() || isMember(resource.data.household_id);
+      allow create: if ownsIncoming()
+        && (request.resource.data.image != null)
+        && request.resource.data.size is int
+        && request.resource.data.size <= 800000;
+      allow update: if ownsExisting();
+      // Deleting a photo that doesn't exist is a harmless no-op - allow it
+      // (resource.data of a missing doc would otherwise error out the rule).
+      allow delete: if !exists(/databases/$(database)/documents/receipt_photos/$(photoId))
+        || ownsExisting();
+    }
+
+    // ---- Default deny for everything else ----
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

@@ -58,6 +58,7 @@ export interface Transaction {
   payment_mode: "UPI" | "Card" | "Cash" | "Netbanking" | "Other" | string;
   source: "manual" | "recurring" | "csv_import" | "telegram" | "telegram_receipt";
   created_at?: Date;
+  has_receipt_photo?: boolean; // true when a photo is stored in receipt_photos/{id}
 }
 
 export interface Budget {

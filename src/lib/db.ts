@@ -1,9 +1,11 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   addDoc,
   updateDoc,
+  setDoc,
   deleteDoc,
   query,
   where,
@@ -120,6 +122,30 @@ async function getHhId(userId: string): Promise<string | undefined> {
     const member = await getHouseholdMembership(userId);
     const id = member?.household_id;
     hhIdCache.set(userId, { id, time: Date.now() });
+
+    // Self-heal the deterministic membership anchor
+    // (household_members/{uid}) - the Firestore security rules use this path
+    // to verify household access for every household-scoped read.
+    if (id) {
+      try {
+        const anchorRef = doc(db, "household_members", userId);
+        const anchorSnap = await getDoc(anchorRef);
+        const anchorData = anchorSnap.exists() ? anchorSnap.data() : null;
+        if (!anchorData || anchorData.household_id !== id) {
+          await setDoc(
+            anchorRef,
+            { household_id: id, user_id: userId },
+            { merge: true },
+          );
+        }
+      } catch (syncErr) {
+        // Rules may reject this for legacy invite-joined members whose
+        // anchor is missing - owner-scoped data still works; re-joining the
+        // household restores full access.
+        console.warn("Membership anchor sync failed", syncErr);
+      }
+    }
+
     return id;
   } catch (e) {
     console.warn("Could not fetch household membership for user", userId, e);

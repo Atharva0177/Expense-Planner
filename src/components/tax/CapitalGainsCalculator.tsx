@@ -11,6 +11,7 @@ interface CapitalGainsCalculatorProps {
   setLtcgOther: (v: number) => void;
   stcgSlab: number;
   setStcgSlab: (v: number) => void;
+  financialYear?: string;
 }
 
 export function CapitalGainsCalculator({
@@ -22,13 +23,17 @@ export function CapitalGainsCalculator({
   setLtcgOther,
   stcgSlab,
   setStcgSlab,
+  financialYear,
 }: CapitalGainsCalculatorProps) {
   const result = calculateCapitalGainsTax({
     stcg_equity: stcgEquity,
     ltcg_equity: ltcgEquity,
     ltcg_other: ltcgOther,
     stcg_slab: stcgSlab,
+    financial_year: financialYear,
   });
+
+  const ltcgRatePct = financialYear === "2026-27" ? "13%" : "12.5%";
 
   return (
     <div className="bg-[#FCFAF7] dark:bg-[#202020] border border-[#1A1A1A] dark:border-[#444] p-4 sm:p-5 space-y-4">
@@ -36,11 +41,11 @@ export function CapitalGainsCalculator({
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-blue-600 dark:text-sky-400" />
           <h4 className="font-mono text-xs sm:text-sm font-bold uppercase tracking-wider text-[#1A1A1A] dark:text-[#F0ECE1]">
-            Capital Gains Taxation Engine (Budget 2024 Rules)
+            Capital Gains Taxation Engine (FY {financialYear || "2024-25"})
           </h4>
         </div>
         <span className="bg-[#1A1A1A] dark:bg-white text-white dark:text-[#121212] px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest font-mono">
-          LTCG: 12.5% | STCG: 20%
+          LTCG: {ltcgRatePct} | STCG: 20%
         </span>
       </div>
 

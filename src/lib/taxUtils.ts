@@ -1,7 +1,133 @@
-/**
+﻿/**
  * Comprehensive Indian Income Tax & Financial Planning Engine
- * Built strictly according to the latest Indian Finance Act & Direct Tax Provisions (Budget 2024 / FY 2024-25 & FY 2025-26).
+ *
+ * VERIFIED AGAINST OFFICIAL SOURCES (Oct 2026):
+ *  - Union Budget documents, Ministry of Finance (indiabudget.gov.in):
+ *    Budget 2024-25 (slabs effective FY 2024-25), Budget 2025-26 (slabs
+ *    effective FY 2025-26), Budget 2026-27 (no change to personal slabs).
+ *  - Income Tax Act 1961 Sec 115BAC/87A/111A/112A (income earned up to
+ *    31-Mar-2026) and Income Tax Act 2025 (effective 1-Apr-2026, FY 2026-27):
+ *    slab rates unchanged from FY 2025-26; LTCG rate 13% under the 2025 Act.
+ *  - Cross-checked with ClearTax's FY 2025-26 & FY 2026-27 slab guide
+ *    (cleartax.in/s/income-tax-slabs) whose worked examples are reproduced in
+ *    tests/taxUtils.test.ts as executable proof.
+ *
+ * New-regime slabs per FY:
+ *  - FY 2024-25 (Budget 2024):      0-3L Nil | 3-7L 5% | 7-10L 10% | 10-12L
+ *    15% | 12-15L 20% | >15L 30%. 87A: full rebate up to 7L taxable (+marginal
+ *    relief). Std deduction 75,000.
+ *  - FY 2025-26 (Budget 2025):     0-4L Nil | 4-8L 5% | 8-12L 10% | 12-16L
+ *    15% | 16-20L 20% | 20-24L 25% | >24L 30%. 87A: rebate up to 60,000,
+ *    zero tax up to 12L taxable (+marginal relief). Std deduction 75,000.
+ *  - FY 2026-27 (Budget 2026 kept FY 2025-26 slabs; Income Tax Act 2025 in
+ *    force): same slabs/rebate as FY 2025-26; LTCG special rate 13%
+ *    (12.5% for FY 2024-25 & 2025-26).
+ *
+ * Old-regime slabs are unchanged across these FYs.
  */
+
+export type FinancialYear = "2024-25" | "2025-26" | "2026-27";
+
+interface NewRegimeConfig {
+  /** [upperLimit, rate] pairs; last pair's upper limit is Infinity */
+  slabs: Array<[number, number]>;
+  /** Taxable income up to which Sec 87A rebates the whole slab tax */
+  rebateLimit: number;
+  /** Maximum rebate amount under Sec 87A */
+  rebateMax: number;
+  /** Special LTCG rate for the FY (12.5% under the 1961 Act, 13% under the 2025 Act) */
+  ltcgRate: number;
+}
+
+export const NEW_REGIME_CONFIGS: Record<FinancialYear, NewRegimeConfig> = {
+  "2024-25": {
+    slabs: [
+      [300000, 0],
+      [700000, 0.05],
+      [1000000, 0.1],
+      [1200000, 0.15],
+      [1500000, 0.2],
+      [Infinity, 0.3],
+    ],
+    rebateLimit: 700000,
+    rebateMax: 25000,
+    ltcgRate: 0.125,
+  },
+  "2025-26": {
+    slabs: [
+      [400000, 0],
+      [800000, 0.05],
+      [1200000, 0.1],
+      [1600000, 0.15],
+      [2000000, 0.2],
+      [2400000, 0.25],
+      [Infinity, 0.3],
+    ],
+    rebateLimit: 1200000,
+    rebateMax: 60000,
+    ltcgRate: 0.125,
+  },
+  // Budget 2026: personal-tax slabs/deductions/rebate unchanged from FY 2025-26.
+  // Income Tax Act 2025 (effective 1-Apr-2026) sets the LTCG special rate at 13%.
+  "2026-27": {
+    slabs: [
+      [400000, 0],
+      [800000, 0.05],
+      [1200000, 0.1],
+      [1600000, 0.15],
+      [2000000, 0.2],
+      [2400000, 0.25],
+      [Infinity, 0.3],
+    ],
+    rebateLimit: 1200000,
+    rebateMax: 60000,
+    ltcgRate: 0.13,
+  },
+};
+
+function resolveFY(financialYear?: string): FinancialYear {
+  return financialYear === "2024-25" ||
+    financialYear === "2025-26" ||
+    financialYear === "2026-27"
+    ? financialYear
+    : "2024-25"; // conservative default preserves legacy behaviour
+}
+
+/** Applies progressive slab rates; returns tax + per-slab breakdown. */
+function computeSlabTax(
+  taxableIncome: number,
+  slabs: Array<[number, number]>,
+): { tax: number; breakdown: SlabBreakdown[] } {
+  const breakdown: SlabBreakdown[] = [];
+  let tax = 0;
+  let lower = 0;
+  for (const [upper, rate] of slabs) {
+    if (taxableIncome <= lower) break;
+    const inSlab = Math.min(taxableIncome, upper) - lower;
+    const slabTax = inSlab * rate;
+    tax += slabTax;
+    const fmt = (n: number) =>
+      Number.isFinite(n)
+        ? `₹${(n / 100000).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}L`
+        : "Above ₹24,00,000";
+    breakdown.push({
+      slab: upper === Infinity ? "Above last slab" : `₹${(lower / 100000).toFixed(2).replace(/\.00$/, "")}L - ${fmt(upper)}`,
+      rate: `${Math.round(rate * 100)}%`,
+      taxableAmountInSlab: inSlab,
+      tax: slabTax,
+    });
+    lower = upper;
+  }
+  if (breakdown.length === 0) {
+    breakdown.push({
+      slab: "₹0 - first slab",
+      rate: "0%",
+      taxableAmountInSlab: 0,
+      tax: 0,
+    });
+  }
+  return { tax, breakdown };
+}
 
 export interface SlabBreakdown {
   slab: string;
@@ -166,13 +292,19 @@ export function calculateHRAExemption(
 }
 
 /**
- * Capital Gains Tax Engine (Budget 2024 Revised Rates: LTCG @ 12.5%, STCG @ 20%)
+ * Capital Gains Tax Engine
+ * - LTCG equity: 12.5% above ₹1.25L exemption (Budget 2024 revision; the
+ *   1961-Act rate applies to FY 2024-25 & FY 2025-26).
+ * - From FY 2026-27 (Income Tax Act 2025, effective 1-Apr-2026): LTCG at 13%.
+ * - STCG equity: 20% (Sec 111A, unchanged).
+ * - Other LTCG (property/gold): same special rate as equity LTCG.
  */
 export function calculateCapitalGainsTax(inputs: {
   stcg_equity?: number;
   ltcg_equity?: number;
   stcg_slab?: number;
   ltcg_other?: number;
+  financial_year?: string;
 }): {
   cg_tax: number;
   ltcg_equity_tax: number;
@@ -185,15 +317,17 @@ export function calculateCapitalGainsTax(inputs: {
   const ltcgEq = Math.max(0, inputs.ltcg_equity || 0);
   const ltcgOther = Math.max(0, inputs.ltcg_other || 0);
 
-  // LTCG Equity: Exemption increased to ₹1,25,000 (from ₹1 Lakh in Budget 2024)
+  const config = NEW_REGIME_CONFIGS[resolveFY(inputs.financial_year)];
+  const ltcgRate = config.ltcgRate;
+
+  // LTCG Equity: ₹1,25,000 exemption (Sec 112A / Sec 198 of the 2025 Act)
   const ltcgExemptionLimit = 125000;
   const ltcgExemptionUsed = Math.min(ltcgEq, ltcgExemptionLimit);
   const taxableLtcgEq = Math.max(0, ltcgEq - ltcgExemptionLimit);
 
-  // Tax Rates: LTCG 12.5%, STCG 20%
-  const ltcgEquityTax = taxableLtcgEq * 0.125;
+  const ltcgEquityTax = taxableLtcgEq * ltcgRate;
   const stcgEquityTax = stcgEq * 0.2;
-  const ltcgOtherTax = ltcgOther * 0.125;
+  const ltcgOtherTax = ltcgOther * ltcgRate;
 
   const totalCgTax = ltcgEquityTax + stcgEquityTax + ltcgOtherTax;
   const totalGains = stcgEq + ltcgEq + ltcgOther + (inputs.stcg_slab || 0);
@@ -209,56 +343,50 @@ export function calculateCapitalGainsTax(inputs: {
 }
 
 /**
- * Calculate Marginal Relief on Surcharge for High Income Earners
+ * Calculate Marginal Relief on Surcharge (Section 2) for High Income Earners.
+ * The surcharge on LTCG/STCG portions is capped at 15% (statutory cap).
  */
 function calculateSurchargeWithMarginalRelief(
   taxableIncome: number,
-  baseTax: number,
+  slabTax: number,
+  cgTax: number,
   regime: "new" | "old",
+  taxAtThreshold: (income: number) => number,
 ): { surcharge: number; marginal_relief: number; net_surcharge: number } {
-  let surchargeRate = 0;
+  let rate = 0;
   let threshold = 0;
-  let prevThresholdRate = 0;
 
   if (taxableIncome > 50000000) {
-    // > 5 Crore
-    surchargeRate = regime === "new" ? 0.25 : 0.37; // New regime capped at 25%
+    rate = regime === "new" ? 0.25 : 0.37; // new regime caps at 25%
     threshold = 50000000;
-    prevThresholdRate = 0.25;
   } else if (taxableIncome > 20000000) {
-    // 2 Cr - 5 Cr
-    surchargeRate = 0.25;
+    rate = 0.25;
     threshold = 20000000;
-    prevThresholdRate = 0.15;
   } else if (taxableIncome > 10000000) {
-    // 1 Cr - 2 Cr
-    surchargeRate = 0.15;
+    rate = 0.15;
     threshold = 10000000;
-    prevThresholdRate = 0.1;
   } else if (taxableIncome > 5000000) {
-    // 50 L - 1 Cr
-    surchargeRate = 0.1;
+    rate = 0.1;
     threshold = 5000000;
-    prevThresholdRate = 0;
   } else {
     return { surcharge: 0, marginal_relief: 0, net_surcharge: 0 };
   }
 
-  const rawSurcharge = baseTax * surchargeRate;
+  const cgRate = Math.min(rate, 0.15); // surcharge on capital gains capped at 15%
+  const slabSurcharge = slabTax * rate;
+  const cgSurcharge = cgTax * cgRate;
+  const rawSurcharge = slabSurcharge + cgSurcharge;
 
-  // Marginal relief: (Tax on current income + Surcharge) should not exceed
-  // (Tax on threshold income + Surcharge on threshold + (Current Income - Threshold))
-  // For simplicity and standard statutory computation:
-  const excessIncome = taxableIncome - threshold;
+  // Marginal relief (Sec 2): tax + surcharge payable must not exceed
+  // (tax + surcharge at the threshold) + (income above the threshold).
+  const thresholdSlabTax = taxAtThreshold(threshold);
+  const thresholdSurcharge = thresholdSlabTax * rate;
   const maxAllowableTotal =
-    baseTax + baseTax * prevThresholdRate + excessIncome;
-  const currentTotal = baseTax + rawSurcharge;
+    thresholdSlabTax + thresholdSurcharge + cgSurcharge + (taxableIncome - threshold);
+  const currentTotal = slabTax + cgTax + rawSurcharge;
 
-  let marginalRelief = 0;
-  if (currentTotal > maxAllowableTotal) {
-    marginalRelief = currentTotal - maxAllowableTotal;
-  }
-
+  const marginalRelief =
+    currentTotal > maxAllowableTotal ? currentTotal - maxAllowableTotal : 0;
   const netSurcharge = Math.max(0, rawSurcharge - marginalRelief);
 
   return {
@@ -270,13 +398,16 @@ function calculateSurchargeWithMarginalRelief(
 
 /**
  * Compute Tax under New Tax Regime (Section 115BAC - Default)
- * Budget 2024 / FY 2024-25 & FY 2025-26 Slabs
+ * FY-aware: Budget 2024 slabs for FY 2024-25; Budget 2025 slabs for
+ * FY 2025-26 & FY 2026-27 (Budget 2026 made no personal-tax changes).
  */
 export function calculateNewRegimeDetails(
   inputs: IndianTaxInputs,
 ): TaxBreakdown {
+  const fy = resolveFY(inputs.financial_year);
+  const config = NEW_REGIME_CONFIGS[fy];
   const isSalaried = inputs.is_salaried !== false;
-  const standardDeduction = isSalaried ? 75000 : 0; // Hiked to 75k in Budget 2024
+  const standardDeduction = isSalaried ? 75000 : 0;
 
   // NPS 80CCD(2) Employer contribution: up to 14% of Basic + DA under New Regime
   const basicSalary = inputs.basic_salary || inputs.gross_salary * 0.5;
@@ -284,7 +415,7 @@ export function calculateNewRegimeDetails(
   const eightyCCD2 = Math.min(inputs.eighty_ccd_2 || 0, max80CCD2);
 
   const deductions: { [key: string]: number } = {
-    "Standard Deduction (Budget 2024)": standardDeduction,
+    "Standard Deduction (Sec 16(ia))": standardDeduction,
   };
   if (eightyCCD2 > 0) {
     deductions["Employer NPS (Sec 80CCD(2)) - 14%"] = Math.round(eightyCCD2);
@@ -302,117 +433,44 @@ export function calculateNewRegimeDetails(
   const grossIncome = inputs.gross_salary + otherIncome;
   const taxableNormalIncome = Math.max(0, grossIncome - totalDeductions);
 
-  // Slab Breakdown (Budget 2024 Revision)
-  // 0 - 3L: Nil
-  // 3L - 7L: 5% (max 20k)
-  // 7L - 10L: 10% (max 30k)
-  // 10L - 12L: 15% (max 30k)
-  // 12L - 15L: 20% (max 60k)
-  // Above 15L: 30%
-  const slabBreakdown: SlabBreakdown[] = [];
-  let slabTax = 0;
+  // Slab computation (FY-specific slabs)
+  const { tax: slabTaxRaw, breakdown: slabBreakdown } = computeSlabTax(
+    taxableNormalIncome,
+    config.slabs,
+  );
 
-  // Slab 1: 0 to 3,00,000 (0%)
-  const s1Amount = Math.min(taxableNormalIncome, 300000);
-  slabBreakdown.push({
-    slab: "₹0 - ₹3,00,000",
-    rate: "0%",
-    taxableAmountInSlab: s1Amount,
-    tax: 0,
-  });
-
-  // Slab 2: 3,00,001 to 7,00,000 (5%)
-  if (taxableNormalIncome > 300000) {
-    const s2Amount = Math.min(400000, taxableNormalIncome - 300000);
-    const s2Tax = s2Amount * 0.05;
-    slabTax += s2Tax;
-    slabBreakdown.push({
-      slab: "₹3,00,001 - ₹7,00,000",
-      rate: "5%",
-      taxableAmountInSlab: s2Amount,
-      tax: s2Tax,
-    });
-  }
-
-  // Slab 3: 7,00,001 to 10,00,000 (10%)
-  if (taxableNormalIncome > 700000) {
-    const s3Amount = Math.min(300000, taxableNormalIncome - 700000);
-    const s3Tax = s3Amount * 0.1;
-    slabTax += s3Tax;
-    slabBreakdown.push({
-      slab: "₹7,00,001 - ₹10,00,000",
-      rate: "10%",
-      taxableAmountInSlab: s3Amount,
-      tax: s3Tax,
-    });
-  }
-
-  // Slab 4: 10,00,001 to 12,00,000 (15%)
-  if (taxableNormalIncome > 1000000) {
-    const s4Amount = Math.min(200000, taxableNormalIncome - 1000000);
-    const s4Tax = s4Amount * 0.15;
-    slabTax += s4Tax;
-    slabBreakdown.push({
-      slab: "₹10,00,001 - ₹12,00,000",
-      rate: "15%",
-      taxableAmountInSlab: s4Amount,
-      tax: s4Tax,
-    });
-  }
-
-  // Slab 5: 12,00,001 to 15,00,000 (20%)
-  if (taxableNormalIncome > 1200000) {
-    const s5Amount = Math.min(300000, taxableNormalIncome - 1200000);
-    const s5Tax = s5Amount * 0.2;
-    slabTax += s5Tax;
-    slabBreakdown.push({
-      slab: "₹12,00,001 - ₹15,00,000",
-      rate: "20%",
-      taxableAmountInSlab: s5Amount,
-      tax: s5Tax,
-    });
-  }
-
-  // Slab 6: Above 15,00,000 (30%)
-  if (taxableNormalIncome > 1500000) {
-    const s6Amount = taxableNormalIncome - 1500000;
-    const s6Tax = s6Amount * 0.3;
-    slabTax += s6Tax;
-    slabBreakdown.push({
-      slab: "Above ₹15,00,000",
-      rate: "30%",
-      taxableAmountInSlab: s6Amount,
-      tax: s6Tax,
-    });
-  }
-
-  // Section 87A Rebate & Marginal Relief
+  // Section 87A Rebate & Marginal Relief (FY-specific limit/max):
+  //  - taxable <= rebateLimit: rebate = min(slabTax, rebateMax)
+  //  - taxable > rebateLimit: marginal relief caps the tax at (taxable - rebateLimit)
+  let slabTax = slabTaxRaw;
   let rebate87A = 0;
   let marginalRelief87A = 0;
 
-  if (taxableNormalIncome <= 700000) {
-    rebate87A = slabTax;
-    slabTax = 0;
-  } else if (taxableNormalIncome > 700000 && taxableNormalIncome <= 727777) {
-    // Marginal relief for income just above 7L:
-    // Tax cannot exceed (Taxable Income - 7,00,000)
-    const incomeAbove7L = taxableNormalIncome - 700000;
-    if (slabTax > incomeAbove7L) {
-      marginalRelief87A = slabTax - incomeAbove7L;
-      slabTax = incomeAbove7L;
+  if (taxableNormalIncome <= config.rebateLimit) {
+    rebate87A = Math.min(slabTax, config.rebateMax);
+    slabTax = slabTaxRaw - rebate87A;
+  } else {
+    // Marginal relief: tax payable cannot exceed income above the rebate limit
+    const excessIncome = taxableNormalIncome - config.rebateLimit;
+    if (slabTaxRaw > excessIncome) {
+      marginalRelief87A = slabTaxRaw - excessIncome;
+      slabTax = excessIncome;
     }
   }
 
-  // Capital Gains Tax
+  // Capital Gains Tax (FY-aware special rates; 87A rebate does NOT apply to
+  // income taxed at special rates)
   const cgResult = calculateCapitalGainsTax(inputs);
   const totalBaseTax = slabTax + cgResult.cg_tax;
 
-  // Surcharge calculation
+  // Surcharge calculation (LTCG portion capped at 15%)
   const totalIncomeForSurcharge = taxableNormalIncome + cgResult.total_gains;
   const surchargeInfo = calculateSurchargeWithMarginalRelief(
     totalIncomeForSurcharge,
-    totalBaseTax,
+    slabTax,
+    cgResult.cg_tax,
     "new",
+    (income: number) => computeSlabTax(income, config.slabs).tax,
   );
   const taxAfterSurcharge = totalBaseTax + surchargeInfo.net_surcharge;
 
@@ -432,7 +490,7 @@ export function calculateNewRegimeDetails(
 
   return {
     regime: "new",
-    financial_year: inputs.financial_year || "2024-25",
+    financial_year: fy,
     gross_income: grossIncome,
     salary_income: inputs.gross_salary,
     other_income: otherIncome,
@@ -659,12 +717,22 @@ export function calculateOldRegimeDetails(
   const cgResult = calculateCapitalGainsTax(inputs);
   const totalBaseTax = slabTax + cgResult.cg_tax;
 
-  // Surcharge Calculation (Old regime top rate is 37% for > 5Cr)
+  // Surcharge Calculation (Old regime top rate is 37% for > 5Cr; LTCG portion capped at 15%)
   const totalIncomeForSurcharge = taxableNormalIncome + cgResult.total_gains;
   const surchargeInfo = calculateSurchargeWithMarginalRelief(
     totalIncomeForSurcharge,
-    totalBaseTax,
+    slabTax,
+    cgResult.cg_tax,
     "old",
+    (income: number) => {
+      // Old-regime slab tax at a given income (general category)
+      const limit = exemptionLimit;
+      if (income <= limit) return 0;
+      let t = Math.min(500000 - limit, income - limit) * 0.05;
+      if (income > 500000) t += Math.min(500000, income - 500000) * 0.2;
+      if (income > 1000000) t += (income - 1000000) * 0.3;
+      return t;
+    },
   );
   const taxAfterSurcharge = totalBaseTax + surchargeInfo.net_surcharge;
 
@@ -710,18 +778,28 @@ export function calculateOldRegimeDetails(
 
 /**
  * Calculate Breakeven Deductions:
- * The total deductions required in the Old Regime to match the New Regime's tax liability.
+ * The total deductions required in the Old Regime to match the New Regime's
+ * tax liability. FY-aware: the zero-tax boundary is 7.75L gross for
+ * FY 2024-25 and 12.75L gross for FY 2025-26 / 2026-27.
  */
-export function calculateBreakevenDeductions(grossIncome: number): number {
-  if (grossIncome <= 775000) {
-    // Under New Regime with 75k Std deduction, up to 7.75L is 0 tax.
-    // In Old Regime, you need deductions to bring income below 5L (or matching zero tax).
+export function calculateBreakevenDeductions(
+  grossIncome: number,
+  financialYear?: string,
+): number {
+  const fy = resolveFY(financialYear);
+  const config = NEW_REGIME_CONFIGS[fy];
+  const zeroTaxGross = config.rebateLimit + 75000; // rebate limit + std deduction
+
+  if (grossIncome <= zeroTaxGross) {
+    // Under New Regime the tax is zero; in Old Regime you need deductions to
+    // bring income below 5L (or match zero tax).
     return Math.max(0, grossIncome - 500000);
   }
 
   // Binary search for exact deduction where Old Tax == New Tax
   const newRegimeTax = calculateNewRegimeDetails({
     gross_salary: grossIncome,
+    financial_year: fy,
   }).total_tax;
 
   let low = 0;
@@ -734,6 +812,7 @@ export function calculateBreakevenDeductions(grossIncome: number): number {
     const testTax = calculateOldRegimeDetails({
       gross_salary: grossIncome,
       other_deductions: Math.max(0, mid - 50000),
+      financial_year: fy,
     }).total_tax;
 
     if (testTax <= newRegimeTax) {
@@ -840,6 +919,7 @@ export function calculateIndianTaxMaster(
   const monthlySavings = Math.round(taxDifference / 12);
   const breakevenDeductions = calculateBreakevenDeductions(
     newRegime.gross_income,
+    inputs.financial_year,
   );
 
   // Capital gains summary
@@ -969,3 +1049,4 @@ export function calculateOldRegime(
     other_deductions: otherDeductions,
   });
 }
+

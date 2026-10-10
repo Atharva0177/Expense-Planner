@@ -41,11 +41,22 @@ A comprehensive personal and family finance management application with AI-power
 
 Expense Planner is a full-stack web application designed for personal and family financial management. It enables users to track income, expenses, budgets, loans, investments, and goals with AI-powered receipt scanning capabilities. The application supports multi-user households with role-based access (primary, spouse, dependent) and provides comprehensive financial reporting.
 
-Built with React/Vite frontend and Node.js/Express backend, the application uses Firebase Firestore as its primary database and integrates with Google's Gemini AI for receipt processing. The application can be deployed via Docker, Vercel (serverless functions), or traditional Node.js hosting.
+Built with React/Vite frontend and Node.js/Express backend, the application uses Firebase Firestore as its primary database and integrates with Google's Gemini AI for receipt processing. The application can be deployed via Docker, Vercel (serverless functions), or traditional Node.js hosting. A self-hosted **n8n** workflow adds a full-featured **Telegram bot** that reads and writes the same Firestore data.
 
 ## Key Features
 
 - **AI-Powered Receipt Scanning**: Upload receipt images to automatically extract amount, date, merchant, and category using Google Gemini AI
+- **Receipt Photo Attachments (free-tier friendly)**: scanned receipt photos are compressed and stored **inside Firestore** (collection `receipt_photos/{txId}`, lazy-loaded) — no Firebase Cloud Storage or Blaze billing required; click the 📎 on any entry to view its photo
+- **Full Editing & Split Transactions**: edit any transaction or income entry (amount, category, date, note, mode) via modals; split one amount into up to 5 equal entries
+- **Payslip / Form 16 Parsing**: upload a payslip image on the Income tab → AI extracts all salary components (basic, HRA, allowances, EPF, TDS, net) and prefills the entry form (`/api/parse-payslip`)
+- **Search Across Everything**: search bar on the Expenses tab matches notes, categories, payment modes, amounts, and dates across **all months**
+- **Telegram Bot (n8n)**: A self-hosted n8n workflow (`n8n/expense-planner-bot.json`, 114 nodes) giving Telegram near-full parity with the website:
+  - Log expenses (`/spent`), natural-language logging (plain text like "spent 250 on groceries"), scan receipt photos with inline Save/Discard confirmation, record income (`/earned`), and undo mistakes (`/undo`)
+  - Budgets (`/budget`, `/budgets`), savings goals (`/goal`, `/goals`, `/contribute`), loans with full amortization schedules (`/loan`, `/loans`), and recurring rules (`/recurring`, `/recurrings`)
+  - Views: monthly summary with savings rate, recent entries, budgets, goals, loans, recurring rules, household members, investments, categories, CSV export - plus `/ask <question>` to chat with your data
+  - **Daily 9 AM auto-processing of due recurring rules** — something the website only does when its Recurring tab is opened
+  - Multi-receipt albums, `/edit` for the last entry, a native Telegram command menu (`/setup-menu`), and HTML-escaped / CSV-injection-guarded replies
+  - Everything writes the same Firestore collections as the website, so bot entries appear on the dashboard instantly and vice versa
 - **Multi-User Household Support**: Create or join households with role-based permissions (primary, spouse, dependent)
 - **Comprehensive Financial Tracking**:
   - Income tracking with detailed breakdown (basic, HRA, allowances, bonuses, deductions)
@@ -61,7 +72,7 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 - **Theme Support**: Light/dark mode with system preference detection
 - **Secure Authentication**: Firebase Auth with email/password providers
 - **Offline Capabilities**: Firestore persistence for intermittent connectivity
-- **Dual Deployment Options**: Run as traditional Express server (Docker/Node.js) or Vercel serverless functions
+- **Multiple Deployment Options**: Traditional Express server (Docker/Node.js), Vercel serverless functions, or Cloudflare Pages
 - **CI/CD Pipeline**: GitHub Actions workflow for linting, testing, building, security auditing, and automated deployment to Vercel and Docker registry
 
 ## Technology Stack
@@ -83,13 +94,17 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 
 - **Node.js**: JavaScript runtime
 - **Express 4**: Web framework for API server
-- **Firebase Admin SDK**: Server-side Firestore access
+- **Firebase Admin SDK**: Server-side Firestore access (Cloudflare Pages Functions)
 - **Google Generative AI (@google/genai)**: Gemini AI integration for receipt scanning
-- **Express Rate Limit**: Request throttling for abuse prevention
 - **Dotenv**: Environment variable loading
 - **TSX**: TypeScript execution for development
 - **ESBuild**: Bundling for production server
 - **Vercel**: Serverless functions platform (api/scan-receipt.ts)
+
+### Automation (Telegram bot)
+
+- **n8n** (self-hosted, Docker Compose profile): 95-node workflow implementing the Telegram bot — Telegram Trigger + Gemini HTTP calls + Firestore REST reads/writes + a daily Schedule Trigger for recurring processing
+- **ngrok**: Free static-domain tunnel exposing the local n8n instance to Telegram's webhook
 
 ### Database
 
@@ -99,8 +114,9 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 ### DevOps & Infrastructure
 
 - **Docker**: Containerization with multi-stage build
-- **Docker Compose**: Orchestration for local development
+- **Docker Compose**: Orchestration for the app plus the `n8n` profile (n8n + ngrok tunnel for the Telegram bot)
 - **Vercel**: Serverless deployment platform
+- **Cloudflare Pages**: Alternative static + functions hosting (`functions/`)
 - **GitHub Actions**: CI/CD pipeline (lint, test, build, security audit, deploy)
 - **Bun**: Package manager (indicated by bun.lockb)
 - **GHCR**: GitHub Container Registry for Docker image storage
@@ -113,7 +129,7 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 
 ## Architecture
 
-The application follows a three-tier architecture with dual deployment options:
+The application follows a three-tier architecture with multiple deployment options, plus an n8n automation tier for the Telegram bot:
 
 ```mermaid
 flowchart TD
@@ -121,11 +137,16 @@ flowchart TD
     B -->|Firestore SDK| C[(Firebase Firestore)]
     B -->|Generative AI API| D[Google Gemini]
     A -->|Static Assets| B
+    E[Telegram Chat] -->|webhook via ngrok| F[n8n Bot Workflow]
+    F -->|Firestore REST + service account| C
+    F -->|receipt photos| D
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#bbf,stroke:#333,stroke-width:2px
     style C fill:#bfb,stroke:#333,stroke-width:2px
     style D fill:#fbb,stroke:#333,stroke-width:2px
+    style E fill:#ffd,stroke:#333,stroke-width:2px
+    style F fill:#dff,stroke:#333,stroke-width:2px
 ```
 
 ### High-Level Components
@@ -133,9 +154,10 @@ flowchart TD
 1. **Client Layer**: React/Vite SPA handling UI rendering and user interactions
 2. **API Layer**:
    - Express server (local/Docker) handling business logic and data validation
-   - Vercel serverless function (`api/scan-receipt.ts`) for AI receipt processing in serverless environments
+   - Vercel serverless function (`api/scan-receipt.ts`) and Cloudflare Pages Functions (`functions/api/scan-receipt.ts`) for AI receipt processing in serverless environments
 3. **Data Layer**: Firestore for persistent storage with caching layer
-4. **External Services**: Google Gemini AI for receipt processing, Firebase Auth for authentication
+4. **Automation Layer**: the n8n Telegram bot workflow — same Firestore database, service-account-authenticated REST reads/writes, plus a daily Schedule Trigger for recurring-rule processing
+5. **External Services**: Google Gemini AI for receipt processing, Firebase Auth for authentication, ngrok for the bot's public webhook
 
 ### Communication Patterns
 
@@ -143,6 +165,7 @@ flowchart TD
 - API ↔ Firestore: Firebase Admin SDK (direct database access)
 - API ↔ Gemini: HTTP POST to generativelanguage.googleapis.com
 - Client ↔ Gemini (fallback): Direct API calls when configured with client-side key
+- Telegram ↔ n8n: webhook via ngrok static domain; n8n ↔ Firestore: REST API with a Google service account (bypasses security rules); n8n ↔ Gemini: HTTP with structured output
 
 ## Directory Structure
 
@@ -151,26 +174,33 @@ expense-planner/
 ├── src/                    # Frontend source code
 │   ├── components/         # Reusable UI components
 │   ├── contexts/           # React context providers (Auth, Theme)
-│   ├── lib/                # Backend-service libraries (Firebase, utils)
+│   ├── lib/                # Data & service libraries (Firebase, db, tax, exports, utils)
 │   ├── pages/              # Page components (Dashboard, Login)
 │   ├── types.ts            # TypeScript interfaces and enums
 │   ├── App.tsx             # Root application component
 │   └── main.tsx            # Application entry point
-├── server.ts               # Backend Express server
+├── server.ts               # Backend Express server (/api/health, /api/scan-receipt)
 ├── api/                    # Vercel serverless functions
-│   └── scan-receipt.ts     # AI receipt scanning endpoint for Vercel
-├── lib/                    # Backend-specific libraries (if separate)
+│   ├── scan-receipt.ts     # AI receipt scanning endpoint for Vercel
+│   └── health.ts           # Health check endpoint for Vercel
+├── functions/api/          # Cloudflare Pages Functions (web app receipt scanning + health)
+├── n8n/                    # Telegram bot automation (self-hosted n8n)
+│   ├── expense-planner-bot.json  # Importable n8n workflow (114 nodes, 2 triggers) - GENERATED, see generate-workflow.cjs
+│   ├── generate-workflow.cjs     # Source of truth for the workflow JSON (npm run bot:generate)
+│   ├── validators/               # 128-test logic suite + graph/wiring/code validators (npm run bot:validate)
+│   ├── scripts/deploy-workflow.mjs  # CI auto-deploy to live n8n via REST API (credential-preserving)
+│   ├── classify-update.js  # Standalone export of the Classify Update node code (hot-fix pasting)
+│   └── README.md           # Bot setup & operations guide
 ├── public/                 # Static assets
 ├── dist/                   # Build output (generated)
 ├── Dockerfile              # Multi-stage Docker build
-├── docker-compose.yml      # Container orchestration
+├── docker-compose.yml      # App + `n8n` profile (n8n + ngrok tunnel)
+├── .env.example            # Template for environment variables
 ├── vercel.json             # Vercel platform configuration
 ├── package.json            # Dependencies and scripts
 ├── tsconfig.json           # TypeScript configuration
-├── .github/                # GitHub Actions workflows
-│   └── workflows/
-│       └── ci-cd.yml       # CI/CD pipeline
-└── firebase-applet-config.json # Fallback Firebase configuration
+├── .github/workflows/ci-cd.yml  # CI/CD pipeline
+└── firebase-applet-config.json  # Fallback Firebase configuration
 ```
 
 ## Frontend Architecture
@@ -188,8 +218,8 @@ flowchart LR
     E --> F[BrowserRouter]
     F --> G[Routes]
 
-    G --> H["/login — Login Page"]
-    G --> I["/ — Dashboard"]
+    G --> H["/login - Login Page"]
+    G --> I["/ - Dashboard"]
 
     I --> J[ProtectedRoute Wrapper]
     J --> K[Dashboard Layout]
@@ -249,7 +279,7 @@ sequenceDiagram
     participant G as Gemini AI
 
     C->>S: HTTPS Request (e.g. POST /api/scan-receipt)
-    S->>S: Validate middleware (rate limiting, JSON parsing)
+    S->>S: Validate middleware (JSON parsing)
 
     alt Has Gemini API Key in request
         S->>G: Call Generative AI API
@@ -293,12 +323,12 @@ sequenceDiagram
 
 ### Middleware (Express)
 
-1. **express.json()**: Body parsing with 25MB limit
-2. **express-rate-limit**:
-   - Global: 100 requests/15min/IP
-   - Scan receipt: 10 requests/hour/IP (expensive AI operations)
-3. **Vite Middleware**: In development, serves client SPA and enables HMR
-4. **Static File Serving**: In production, serves built client assets
+1. **securityHeaders**: nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy, CSP on all responses
+2. **globalLimiter**: 300 requests / 15 min / IP (dependency-free fixed-window)
+3. **scanLimiter**: 20 requests / hour / IP on `/api/scan-receipt` (protects expensive AI calls)
+4. **express.json()**: Body parsing with 25MB limit
+5. **Vite Middleware**: In development, serves client SPA and enables HMR
+6. **Static File Serving**: In production, serves built client assets
 
 ### Middleware (Vercel Function)
 
@@ -502,9 +532,11 @@ The application relies on Firestore's automatic indexing for most queries, with 
 
 ### Receipt Scanning
 
-| Method | Endpoint            | Auth                | Purpose                                             |
-| ------ | ------------------- | ------------------- | --------------------------------------------------- |
-| POST   | `/api/scan-receipt` | None (rate limited) | Upload receipt image for AI-powered data extraction |
+| Method | Endpoint            | Auth | Purpose                                             |
+| ------ | ------------------- | ---- | --------------------------------------------------- |
+| POST   | `/api/scan-receipt` | None | Upload receipt image for AI-powered data extraction |
+
+> Note: Telegram bot receipt scanning does **not** go through this endpoint — the n8n workflow calls the Gemini API directly. This endpoint serves the website's in-app receipt scanner (Express / Vercel / Cloudflare Pages variants of it are all equivalent).
 
 **Request Body:**
 
@@ -529,26 +561,29 @@ The application relies on Firestore's automatic indexing for most queries, with 
 **Error Responses:**
 
 - 400: Missing image data
-- 429: Rate limit exceeded (10 requests/hour/IP for Express; Vercel function has its own limits)
+- 413: Image too large
+- 415: Unsupported image type (JPEG/PNG/WebP/HEIC/HEIF/GIF only)
+- 429: Rate limit exceeded (with `Retry-After` header)
 - 500: AI processing failure or server error
 - 503: Gemini service unavailable (transient)
 
 ### Rate Limiting
 
-- **Express Server**:
-  - Global Limiter: 100 requests per 15 minutes per IP address
-  - Scan Receipt Limiter: 10 requests per hour per IP address (protects expensive AI operations)
+- **Express Server** (dependency-free, fixed-window, per-IP):
+  - Global Limiter: 300 requests per 15 minutes
+  - Scan Receipt Limiter: 20 requests per hour (protects expensive AI operations); 429 responses include `Retry-After`
 - **Vercel Function**: Inherits Vercel's default limits (can be adjusted in vercel.json if needed)
+- **Telegram bot**: protected by the n8n trigger's **user-ID allowlist** rather than rate limiting
 
 ### Security Headers
 
-All responses include:
-
-- `X-Content-Type-Options: nosniff`
+- **Express**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, and a conservative CSP on all responses (see `server.ts`)
+- **Vercel**: `X-Content-Type-Options: nosniff` via `vercel.json`
+- **Serverless scan functions**: `nosniff` on all responses
 
 ### CORS
 
-Configured implicitly through Express - allows all origins in development, restricted in production via frontend proxying. Vercel functions follow Vercel's CORS handling.
+Not configured on the Express server (same-origin in practice: the server also serves the frontend). Vercel functions follow Vercel's CORS handling.
 
 ## Authentication & Authorization
 
@@ -728,6 +763,37 @@ sequenceDiagram
     S-->>I: Success - redirect to app
 ```
 
+### Telegram Bot Workflow (n8n)
+
+The Telegram bot runs as a self-hosted [n8n](https://n8n.io) workflow — not as code in this repo's serverless/worker files (those earlier implementations have been removed). It shares the website's Firestore database directly, so bot entries and website data are always in sync.
+
+```mermaid
+flowchart LR
+    T[Telegram Chat] -->|Updates via ngrok webhook| N[n8n: expense-planner-bot]
+    N -->|/spent, /earned, /budget, /goal, /loan, ...| F[(Firestore)]
+    N -->|Receipt photo| G[Gemini AI]
+    G -->|amount, date, merchant, category| F
+    N -->|daily 9 AM| R[Process due recurring rules]
+    R --> F
+    F -->|Replies: confirmations, summaries, budget warnings| T
+```
+
+- **Expense text**: `/spent 250 groceries big bazaar` writes a `transactions` doc with `source: "telegram"` and `user_id: "telegram_<tg-id>"`
+- **Receipt photos**: sent to Gemini with a structured response schema, then auto-logged with `source: "telegram_receipt"`
+- **Income**: `/earned 50000 salary` writes an `income_entries` doc for the current month
+- **Summary**: `/summary [YYYY-MM]` replies with spend, income, savings rate, and top categories
+- **Household linking**: `/join <invite code>` links the Telegram account to a web-app household (code from the website's Family tab), after which all bot entries appear on the website dashboard, budgets, and reports
+- **Budgets**: `/budget <category> <amount>` sets monthly limits (visible/editable on the website), `/budgets` shows budget vs spend
+- **Goals**: `/goal <name> <amount> [date]` creates goals, `/goals` lists progress, `/contribute <goal> <amount>` adds money
+- **Loans**: `/loan <principal> <rate%> <months>` creates the loan with a full amortization schedule and a monthly EMI rule (identical math to the website); `/loans` lists them
+- **Recurring rules**: `/recurring <amount> <freq> <category>` creates rules; a daily 9 AM n8n schedule processes due rules automatically (the website only processes on tab open)
+- **Utilities**: `/undo` deletes the last entry, `/recent` lists the last 10, `/export` sends a CSV, `/categories`, `/members`, `/investments`
+- **Budget warnings**: replies flag when a category crosses 80% or exceeds its monthly budget
+- **Category matching**: multi-word categories resolve correctly, unknown categories return "Did you mean ...?" suggestions
+- **Out of scope**: the interactive tax planner, PDF/Excel exports, investment holdings entry, and CSV import stay website-only
+
+Setup instructions (Docker Compose profile, credentials, import, security allowlist) live in [`n8n/README.md`](n8n/README.md).
+
 ## Data Flow
 
 ### Receipt Scanning Data Flow
@@ -816,6 +882,11 @@ The application implements a multi-layer caching strategy:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Yes (via fallback)                        | Firebase messaging sender ID                    | Frontend Firebase initialization                                                       |
 | `VITE_FIREBASE_APP_ID`              | Yes (via fallback)                        | Firebase app ID                                 | Frontend Firebase initialization                                                       |
 | `VITE_FIREBASE_DATABASE_ID`         | No (defaults to "(default)")              | Firestore database ID                           | Frontend Firebase initialization                                                       |
+| `TELEGRAM_BOT_TOKEN`                | No (n8n only)                             | Telegram bot token from @BotFather             | n8n Telegram API credential (see `n8n/README.md`)                                     |
+| `N8N_ENCRYPTION_KEY`                | No (n8n profile only)                     | Encryption key for n8n credentials storage      | n8n container (`docker compose --profile n8n up`)                                     |
+| `N8N_WEBHOOK_URL`                   | No (n8n profile only)                     | Public HTTPS URL that reaches n8n (ngrok domain)| n8n Telegram webhook registration                                                      |
+| `NGROK_AUTHTOKEN`                   | No (n8n profile only)                     | ngrok authtoken (free account)                 | ngrok container (public tunnel for the bot webhook)                                    |
+| `NGROK_DOMAIN`                      | No (n8n profile only)                     | ngrok free static domain (e.g. `x.ngrok-free.dev`) | ngrok container                                                                   |
 | `VERCEL_TOKEN`                      | No (for CI/CD)                            | Vercel CLI token for deployments                | GitHub Actions (`deploy-preview`, `deploy-production`)                                 |
 | `SNYK_TOKEN`                        | No (for CI/CD)                            | Snyk token for security scanning                | GitHub Actions (`security-audit`)                                                      |
 | `GITHUB_TOKEN`                      | No (for CI/CD)                            | GitHub token for Docker registry login          | GitHub Actions (`docker-build`)                                                        |
@@ -948,9 +1019,28 @@ service cloud.firestore {
 
 ## Testing
 
-The application does not include a dedicated test suite in the current codebase. Development relies on manual testing and browser-based verification.
+The project has a real test suite wired into CI:
 
-### Testing Approach
+```bash
+npm test           # Vitest suite (website utils) - 19 tests
+npm run bot:validate   # n8n bot suite - 128 logic tests + graph/wiring/code/expression validators
+npm run bot:generate   # regenerate the workflow JSON from the generator (drift-checked in CI)
+```
+
+### Website unit tests (`tests/`, Vitest)
+
+- `loanUtils.test.ts` — EMI formula (parity with the site's own loans), amortization schedule shape, declining balances, prepayment rows
+- `taxUtils.test.ts` — HRA exemption rules (metro/non-metro, rent-10%-basic, PAN threshold), capital-gains engine (Budget-2024 rates + ₹1.25L exemption), breakeven helper
+
+### Bot tests (`n8n/validators/`, plain Node, zero dependencies)
+
+- `test-bot-logic.cjs` — 128 functional tests: command parsing (incl. natural language, `/edit`, `/ask`, callbacks), transaction/goal/loan/recurring builders, budget warnings, HTML escaping, CSV formula-injection guard, invite validation, scan confirmation parking
+- `validate-workflow.cjs` — graph structure (orphans, connection refs, `$()` references)
+- `check-switch-wiring.cjs` — every switch output wired to the correct target (catches off-by-one routing)
+- `check-code-nodes.cjs` — all embedded Code-node scripts parse as valid JS
+- `check-expressions.cjs` — every query parameter expression resolves to scalars (n8n's expression parser can't handle nested object literals)
+
+### Testing Approach (beyond the suites)
 
 1. **Manual Verification**: Feature testing through UI interaction
 2. **Build Validation**: Ensuring production build succeeds (`npm run build`)
@@ -1008,10 +1098,14 @@ flowchart LR
 #### Quick Start with Docker Compose
 
 ```bash
+# Web app only
 docker compose up --build
+
+# Web app + Telegram bot infrastructure (n8n + ngrok tunnel)
+docker compose --profile n8n up -d
 ```
 
-Access at [http://localhost:3000](http://localhost:3000)
+Access the app at [http://localhost:3000](http://localhost:3000); the n8n editor (bot) at [http://localhost:5678](http://localhost:5678). The bot's full setup (ngrok domain, credentials, workflow import) is documented in [`n8n/README.md`](n8n/README.md).
 
 #### Manual Docker Usage
 
@@ -1251,81 +1345,79 @@ See [Docker](#docker) section for containerized deployment options
 
 ### Implemented Security Controls
 
-- **Rate Limiting**:
-  - Global: 100 requests/15min/IP (Express)
-  - Receipt Scanning: 10 requests/hour/IP (Express)
-  - Vercel functions use platform defaults
+- **Firestore Security Rules** (`firestore.rules`):
+  - Per-collection rules with true least-privilege: reads allowed for the owner (`user_id`) or household members; writes owner-only; `system` categories read-only; default-deny for everything else
+  - Household membership is verified through a deterministic anchor doc (`household_members/{uid}`) that the app self-heals in `getHhId()` and maintains on join/leave/create; invites live at `invites/{code}` so rules can verify a pending, unexpired invite by path — no more "any signed-in user can read/write the whole database"
+  - **Deploy them**: Firebase console → Firestore → select the named database (`ai-studio-59a52c44-...`) → Rules tab → paste `firestore.rules` → Publish (or `firebase deploy --only firestore:rules`)
+  - Migration note: users whose only membership is a legacy auto-ID doc regain access automatically if they created their household (self-heal, founder clause); legacy *invite-joined* members need a one-time manual anchor doc or a re-invite
+- **Telegram Bot Access Control**:
+  - The n8n Telegram Trigger ships with a **user-ID allowlist preset** — only the owner's Telegram account can invoke the bot (change the ID in the trigger node if you fork this)
+  - The bot's service account bypasses Firestore rules (Admin-level); all bot credentials live in n8n's encrypted credential store (`N8N_ENCRYPTION_KEY`)
+  - The public webhook URL is unguessable (n8n per-workflow path) and carried over HTTPS via ngrok
 - **Input Validation**:
-  - Server-side validation for all API endpoints
+  - Server-side validation for all API endpoints: image MIME whitelist (JPEG/PNG/WebP/HEIC/HEIF/GIF), payload size caps, type checks
   - Client-side form validation with HTML5 constraints
-- **Secure Headers**:
-  - `X-Content-Type-Options: nosniff` on all responses
-  - Additional headers configurable via middleware
+  - Bot-side sanity guards: receipt images verified by magic bytes and size; amounts must be positive and under ₹50 lakh; dates beyond ±60 days are re-filed under today with a transparent note
+- **Rate Limiting** (Express):
+  - Global: 300 requests / 15 min / IP
+  - Scan receipt: 20 requests / hour / IP (protects expensive AI operations)
+  - Returns 429 with a `Retry-After` header; dependency-free fixed-window implementation
+- **Secure Headers** (Express):
+  - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, and a conservative **Content-Security-Policy** on all responses; `nosniff` also set by the serverless scan functions
+- **Injection Hardening (Bot)**:
+  - All bot replies HTML-escape user-derived text (merchants, notes, category and goal names) before Telegram `parse_mode=HTML` rendering
+  - CSV export neutralizes spreadsheet formula injection (cells starting with `=`, `+`, `-`, `@` are prefixed)
 - **Authentication**:
   - Firebase Auth with industry-standard password hashing
   - ID token verification for API access (implicit via Firestore rules)
 - **Authorization**:
-  - Resource ownership enforced through `user_id` and `household_id` scoping
+  - Resource ownership enforced through `user_id` and `household_id` scoping (now enforced server-side by rules, not just by convention)
   - Role-based UI elements for household members
+  - Bot joins households through the same invite-code flow as human members
 - **Data Protection**:
   - Firestore encryption at rest and in transit
   - Environment variable separation for secrets
 - **Dependency Management**:
   - Locked versions via package-lock.json and bun.lockb
-  - Regular updates recommended for security patches
+  - `xlsx` installed from SheetJS's patched CDN build (the npm release is orphaned and vulnerable — see status below)
 - **CI/CD Security**:
   - npm audit and Snyk scan in pipeline
   - Secrets managed via GitHub repository secrets
 
 ### Recommended Improvements
 
-- **Helmet.js**: Add HTTP header middleware for additional protections
-- **CORS Policy**: Implement explicit CORS origins instead of wildcard
-- **Request Sanitization**: Add middleware for SQL/noSQL injection prevention (though Firestore is injection-resistant)
-- **Helmet Middleware**: Consider for Express to set additional security headers
 - **Audit Logging**: Implement structured logging for security-relevant events
 - **Password Policies**: Consider enforcing minimum password strength via Firebase Auth settings
 - **Session Management**: Implement explicit session expiration on client-side
-- **Content Security Policy**: Add CSP headers to mitigate XSS risks
 - **Regular Dependency Updates**: Establish schedule for updating npm/bun packages
+- **Client-Side API Key**: The optional client-side Gemini key (LocalStorage) has XSS exposure; prefer the server-side scan path
 
 ### Known Security Considerations
 
 - **Firebase Configuration**: The fallback configuration in `firebase-applet-config.json` should not be used for production with sensitive data
+- **Rules Deployment Gap**: The hardened rules only protect the database once actually deployed (see the deployment step above); until then the previous permissive rules remain active
+- **Bot Service Account**: The n8n bot uses a Google service account with Cloud Datastore User access — it bypasses Firestore rules entirely. Keep the n8n credential store encrypted (`N8N_ENCRYPTION_KEY`) and the Telegram trigger's user-ID allowlist enabled
 - **Client-Side API Keys**: Storing Gemini API keys in LocalStorage presents XSS risk; consider using httpOnly cookies if SameSite attributes are properly configured
-- **File Uploads**: Receipt scanning accepts image files; ensure backend validates file types and sizes (currently 25MB limit via express.json)
-- **Information Disclosure**: Error messages may reveal implementation details; consider generic messages in production
 - **Supply Chain**: Monitor dependencies for vulnerabilities via CI/CD pipeline
 
-### Current Security Status (as of 2026-08-19)
+### Current Security Status (as of 2026-10-09)
 
-Dependency vulnerability scanning shows 17 total vulnerabilities (9 moderate, 8 high) with **no critical vulnerabilities**.
+Dependency vulnerability scanning shows **15 vulnerabilities (1 moderate, 14 high), no critical** — down from 31 (including 1 critical) at the start of the hardening pass.
 
-**Resolved Critical Issue**:
+**Resolved**:
 
-- Fixed critical tar vulnerability in @mapbox/node-pre-gyp by upgrading @vercel/node to 5.10.1, which resolved the blocker preventing CI/CD pipeline success
+- **Critical** `proxy-addr` IP-spoofing (and 14 others) via `npm audit fix`
+- **`xlsx` (SheetJS prototype pollution + ReDoS)**: the npm release has no fix; replaced with the patched build from SheetJS's official CDN (`cdn.sheetjs.com/xlsx-0.20.3`) — verified: build and exports work unchanged
+- Express had **zero real protections** (no rate limiting, no security headers, no input validation, leaky error messages) — all fixed in `server.ts`; the Vercel and Cloudflare scan functions received the same treatment (MIME whitelist, size cap, generic errors, `nosniff`)
+- Firestore went from "any authenticated user can read/write everything" to the least-privilege ruleset in `firestore.rules`
 
-**Remaining High Severity Vulnerabilities**:
+**Accepted / remaining (all transitive, no safe upgrade path)**:
 
-1. **js-yaml** (in @vercel/python-analysis@0.13.2/node_modules/js-yaml@4.1.1)
-   - Fix available via `npm audit fix` but not applied due to dependency lock constraints
-   - Requires updating @vercel/python-analysis to get fixed js-yaml, but 0.13.2 is latest available
+1. `@fastify/busboy`, `undici`, `path-to-regexp`, `ajv` (via `@vercel/node`) — fixes require downgrading `@vercel/node` to 4.0.0, which reintroduces the critical `tar` vulnerability fixed earlier; deliberate risk acceptance
+2. `@grpc/grpc-js` (via `firebase`) — fix requires a breaking downgrade of the Firebase SDK
+3. `braces` (via `ts-morph`, itself under `@vercel/*`) — no direct update path
 
-2. **minimatch, path-to-regexp, undici** (in various @vercel/node dependencies)
-   - Fixes available via `npm audit fix --force` but would require downgrading @vercel/node to 4.0.0
-   - This downgrade would reintroduce the critical tar vulnerability we just fixed
-   - Represents a deliberate risk acceptance tradeoff
-
-3. **xlsx** (top level)
-   - No fix available (known limitation of SheetJS library)
-
-**Risk Assessment & Mitigation**:
-
-- Application builds (`npm run build`), starts (`npm run start`), and passes TypeScript checks (`npm run lint`) with current dependencies
-- Critical blocker (tar vulnerability) has been resolved
-- Maintained functionality throughout dependency updates
-- Known high severity issues remain in dependencies where fixes would reintroduce more critical issues
-- Regular monitoring continues; will revisit when dependency updates provide non-disruptivefix paths
+**Risk Assessment**: the app builds, typechecks, starts, and passes functional smoke tests with all fixes applied. The remaining 15 are transitive build-tool dependencies not exercised by the runtime app; they are monitored and will be picked up when upstream maintainers publish compatible releases.
 
 ## Performance
 
@@ -1344,7 +1436,7 @@ Dependency vulnerability scanning shows 17 total vulnerabilities (9 moderate, 8 
 - **Image Processing**:
   - HEIC to JPEG conversion reduces file size
   - Client-side resizing for oversized images
-- **Rate Limiting**: Prevents abuse and excessive resource consumption
+- **n8n Bot Workflow**: user-ID allowlist on the trigger; service-account writes are constrained to known collections by the workflow logic
 - **Static Asset Caching**: Vercel and Docker deployments leverage browser caching
 - **Serverless Functions**: Vercel provides automatic scaling and edge execution
 
@@ -1395,7 +1487,7 @@ Dependency vulnerability scanning shows 17 total vulnerabilities (9 moderate, 8 
   - Multiple model fallbacks for Gemini API
   - Transient error detection (503, 429) with retry logic
   - User-friendly messages for service availability issues
-- **Rate Limiting**: Returns JSON error with retry-after information via headers
+- **Receipt Scanning**: user-friendly 503 message during high Gemini traffic; retries with model fallback
 
 ### Server-Side Error Handling (Vercel Function)
 
@@ -1578,6 +1670,23 @@ docker run --rm -it expense-planner sh
 # Verify build output includes api/scan-receipt.ts
 ```
 
+#### Problem: Telegram bot not responding or entries missing from the website
+
+**Symptoms**:
+
+- Bot goes silent after working before
+- Bot entries don't appear on the website dashboard
+- Receipt scans return wrong data
+
+**Diagnosis & Solution**:
+
+1. Bot silent → check `docker compose --profile n8n ps` (n8n + ngrok must both be Up), then n8n → Executions tab for errors — every bot reply carries a self-diagnosing "Reason:" line when something fails
+2. Bot entries missing on the website → confirm the bot is linked to your household (`/join` once, using an invite code from the Family tab); unlinked entries are invisible to the household-scoped dashboard
+3. Empty lists everywhere on the website → the household-scoped queries need composite Firestore indexes — see "Required Firestore composite indexes" in [`n8n/README.md`](n8n/README.md) (missing indexes fail silently as empty results)
+4. Receipt scans wrong → the bot scans with `gemini-2.5-pro` at temperature 0; if the "Reason:" line shows a rate limit, wait ~1 minute (free-tier quota) and resend
+
+Full bot troubleshooting table: [`n8n/README.md`](n8n/README.md).
+
 #### Problem: Household features not working
 
 **Symptoms**:
@@ -1635,6 +1744,19 @@ docker run --rm -it expense-planner sh
 3. **Add Hooks**: Consider creating custom React hooks for data fetching
 4. **Update Caching**: Add to caching mechanism if frequent access needed
 5. **Test**: Verify read/write operations work correctly
+
+### Adding a New Bot Command
+
+1. **Parse it**: Add a regex + intent branch in the `Classify Update` node of `n8n/expense-planner-bot.json` (or paste-update `n8n/classify-update.js` if hot-fixing)
+2. **Route it**: Add a rule + output on the `Route by Intent` switch and wire it to a branch
+3. **Household-scoped data?** Route through the `Query Household (Hub)` → `Dispatch After Household` pattern; use the `$1`/`$2` scoped-query trick (field itself parameterized)
+4. **Writes**: mirror the website's exact field types — dates as strings via the REST writers (`n8n`'s Firestore node silently converts date-like strings to timestamps, which the website's string-range queries can't see)
+5. **Re-export** the workflow JSON from the n8n editor back into `n8n/expense-planner-bot.json` to keep the repo in sync
+
+**Website-parity checklist before shipping a bot command:** same collection, same
+field names, `date`/`month` as plain strings, `household_id` attached when the
+user is linked, and composite indexes exist for any new household-scoped query
+shape (missing indexes fail silently as empty lists — see `n8n/README.md`).
 
 ### Adding Third-Party Integrations
 
@@ -1705,12 +1827,12 @@ docker run --rm -it expense-planner sh
 - **Evidence**:
   - Dual-path approach in `src/lib/receiptScanner.ts` (client/server fallback)
   - Multiple Gemini model fallbacks in both client and server implementations
-  - Rate limiting specifically for AI operations
+  - Telegram bot runs receipt scans through its own pipeline with sanity guards and a user-ID allowlist
   - Vercel serverless function (`api/scan-receipt.ts`) for serverless environments
 - **Impact**:
   - Ensures functionality across deployment types (serverful, static, serverless)
   - Provides resilience against service outages
-  - Controls costs through rate limiting and efficient model selection
+  - Controls costs through a single flash-model first pass with a pro-model fallback only on failure
 - **Trade-offs**:
   - Increased code complexity
   - Potential inconsistency between client and server results
@@ -1781,21 +1903,23 @@ The application requires Firebase for authentication and data storage. However, 
 3. Enter the email address and select role (spouse/dependent)
 4. Share the generated invite code with the family member
 5. They can accept the invite via the app or by entering the code in the Household section
+6. **To link the Telegram bot too**: send `/join <invite code>` to the bot — after that, everything logged via Telegram shows up in your household dashboard
 
 ### Where is my data stored?
 
-Data is stored in Firebase Firestore, a NoSQL cloud database. If using the fallback configuration, data is stored in a demo project. For production use, configure your own Firebase project.
+Data is stored in Firebase Firestore, a NoSQL cloud database. The Telegram bot reads and writes the exact same Firestore collections (with a Google service account), so there is one source of truth for both the website and the bot. If using the fallback configuration, data is stored in a demo project. For production use, configure your own Firebase project.
 
 ### How secure is my financial data?
 
 The application implements:
 
 - Firebase Authentication with secure password handling
-- Firestore security rules (when configured with your own project)
-- Rate limiting to prevent abuse
+- Least-privilege Firestore security rules (see `firestore.rules`)
+- Rate limiting and security headers on the API server
+- n8n trigger user-ID allowlist on the Telegram bot
 - Environment variable separation for secrets
 - No sensitive data stored client-side beyond session tokens
-  For maximum security, use your own Firebase project and enable appropriate security rules.
+  For maximum security, use your own Firebase project and deploy the rules from `firestore.rules`.
 
 ### Can I run this application offline?
 
@@ -1820,6 +1944,11 @@ The application can be deployed via:
 - **Vercel**: Using GitHub Actions (`vercel deploy --prebuilt`) or Vercel CLI
 - **Docker**: Using `docker compose up --build` or manual `docker run`
 - **Traditional Node.js**: Using `npm run build` then `node dist/server.cjs`
+- **Cloudflare Pages**: Static frontend + `functions/api/*` for receipt scanning
+
+The **Telegram bot** runs separately as a self-hosted n8n instance
+(`docker compose --profile n8n up -d` — see [`n8n/README.md`](n8n/README.md))
+and connects to the same Firestore database, so it works with any of the above.
   The pipeline automates Vercel and Docker builds/pushes on pushes to `main`.
 
 ### Is the application suitable for business use?

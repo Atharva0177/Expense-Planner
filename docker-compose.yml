@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   expense-planner:
     build:
@@ -16,3 +14,62 @@ services:
     env_file:
       - path: .env
         required: false
+
+  # n8n powers the Telegram bot (see n8n/README.md).
+  # Start with: docker compose --profile n8n up -d
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: expense_planner_n8n
+    restart: unless-stopped
+    profiles:
+      - n8n
+    ports:
+      - "5678:5678"
+    environment:
+      # IMPORTANT: set N8N_ENCRYPTION_KEY in .env (generate with: openssl rand -base64 32).
+      # If left empty, n8n regenerates an ephemeral key on every restart and saved credentials break.
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      # Public HTTPS URL that reaches this n8n instance (required for the
+      # Telegram webhook). When using the cloudflared service below, this is
+      # the public hostname you configured for the tunnel, e.g.
+      # https://n8n.your-domain.com
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      # Bot token is read by the workflow's /setup-menu command ($env)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  # ngrok: exposes n8n to the internet over HTTPS using a free static domain
+  # (https://dashboard.ngrok.com/domains). Telegram's webhook POSTs pass through
+  # without the browser interstitial; use localhost:5678 for the n8n editor UI.
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: expense_planner_ngrok
+    restart: unless-stopped
+    profiles:
+      - n8n
+    # IMPORTANT: set NGROK_AUTHTOKEN and NGROK_DOMAIN in .env (free account at
+    # https://dashboard.ngrok.com; authtoken + static domain under your dashboard)
+    command: http --url=${NGROK_DOMAIN:-} --log stdout n8n:5678
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:-}
+
+  # Alternative (requires owning a registered domain on Cloudflare):
+  # Cloudflare Tunnel. Point its public hostname at http://n8n:5678 and set
+  # N8N_WEBHOOK_URL + CLOUDFLARED_TUNNEL_TOKEN, then swap this in for ngrok.
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: expense_planner_tunnel
+  #   restart: unless-stopped
+  #   profiles:
+  #     - n8n
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN:-}
+
+volumes:
+  n8n_data:

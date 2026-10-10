@@ -74,7 +74,13 @@ export function TaxFilingSummaryModal({
                 Financial Year:
               </span>
               <span className="font-bold text-[#1A1A1A] dark:text-[#F0ECE1]">
-                FY {chosenRegime.financial_year} (AY 2025-26)
+                FY {chosenRegime.financial_year} (AY{" "}
+                {(() => {
+                  const fy = chosenRegime.financial_year || "2024-25";
+                  const start = parseInt(fy.slice(0, 4), 10);
+                  return `${start + 1}-${String((start + 2) % 100).padStart(2, "0")}`;
+                })()}
+                )
               </span>
             </div>
           </div>

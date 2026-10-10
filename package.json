@@ -9,7 +9,10 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "bot:generate": "node n8n/generate-workflow.cjs n8n/expense-planner-bot.json",
+    "bot:validate": "node n8n/validators/run-all.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -34,7 +37,7 @@
     "smol-toml": "^1.6.1",
     "tailwind-merge": "^3.6.0",
     "tar": "^7.5.21",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -46,6 +49,7 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^5.0.3"
   }
 }
