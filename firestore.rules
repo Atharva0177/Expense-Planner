@@ -39,9 +39,12 @@ service cloud.firestore {
     }
 
     function isMember(householdId) {
+      // exists() guard first: get().data on a MISSING doc errors and would
+      // turn every evaluation into a deny (and abort legitimate operations).
       return signedIn()
         && householdId != null
-        && householdId == myMembership().household_id;
+        && exists(/databases/$(database)/documents/household_members/$(uid()))
+        && myMembership().household_id == householdId;
     }
 
     function ownsExisting() {
@@ -58,7 +61,10 @@ service cloud.firestore {
 
     // ---- Households ----
     match /households/{householdId} {
-      allow read: if isMember(householdId);
+      // Members can read; the CREATOR can always read (bootstrap: the anchor
+      // doc may not exist yet on first login after the rules change).
+      allow read: if isMember(householdId)
+        || resource.data.created_by == uid();
       allow create: if signedIn() && request.resource.data.created_by == uid();
       allow update: if isMember(householdId);
       allow delete: if false; // households are never deleted by the app
@@ -66,7 +72,14 @@ service cloud.firestore {
 
     // ---- Household members (anchor doc: household_members/{uid}) ----
     match /household_members/{memberId} {
-      allow read: if ownsExisting() || isMember(resource.data.household_id);
+      // Bootstrap rule: a user can always read their OWN anchor path, even
+      // when the doc does not exist yet. Without this, getDoc on the missing
+      // anchor throws permission-denied (rule evaluation errors on
+      // resource.data of missing docs) and aborts the self-heal BEFORE the
+      // setDoc that would create the anchor - a deadlock where nothing
+      // household-scoped ever works.
+      allow read: if signedIn()
+        && (memberId == uid() || ownsExisting() || isMember(resource.data.household_id));
 
       // Writes only to your own membership doc, and only when:
       //  - you founded the household, or
