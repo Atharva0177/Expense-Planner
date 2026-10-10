@@ -75,31 +75,13 @@ export async function createHousehold(
       created_at: Timestamp.now(),
     });
 
-    // Check if user already has an existing legacy membership record
-    const existingQ = query(
-      collection(db, "household_members"),
-      where("user_id", "==", userId),
-    );
-    const existingSnap = await getDocs(existingQ);
-    if (!existingSnap.empty) {
-      await updateDoc(doc(db, "household_members", existingSnap.docs[0].id), {
-        household_id: docRef.id,
-        email,
-        role: "primary",
-        joined_at: Timestamp.now(),
-      });
-    } else {
-      await addDoc(collection(db, "household_members"), {
-        household_id: docRef.id,
-        user_id: userId,
-        email,
-        role: "primary",
-        joined_at: Timestamp.now(),
-      });
-    }
+    // Remove any legacy membership rows FIRST - the anchor below is the
+    // single source of truth (updating legacy rows alongside the anchor
+    // makes the same member appear twice in the family list)
+    await removeLegacyMembershipRows(userId);
 
-    // Keep the deterministic membership anchor (household_members/{uid}) in
-    // sync - the Firestore security rules use it to verify household access.
+    // Write the deterministic membership anchor (household_members/{uid}) -
+    // the Firestore security rules use this path to verify household access.
     await setDoc(
       doc(db, "household_members", userId),
       {
@@ -160,6 +142,34 @@ export async function leaveHousehold(userId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Removes duplicate/legacy membership rows (household_members docs whose id
+ * is an auto-ID instead of the user's uid). The deterministic anchor
+ * (household_members/{uid}) is the single source of truth; leaving legacy
+ * rows in place makes the family member list show the same person twice.
+ * Best-effort: never throws (rule- or network failures are logged and
+ * skipped - the anchor write remains authoritative).
+ */
+async function removeLegacyMembershipRows(userId: string): Promise<void> {
+  try {
+    const q = query(
+      collection(db, "household_members"),
+      where("user_id", "==", userId),
+    );
+    const snapshot = await getDocs(q);
+    const duplicates = snapshot.docs.filter((d) => d.id !== userId);
+    for (const dup of duplicates) {
+      try {
+        await deleteDoc(doc(db, "household_members", dup.id));
+      } catch (e) {
+        console.warn("Legacy membership cleanup skipped for doc", dup.id, e);
+      }
+    }
+  } catch (e) {
+    console.warn("Legacy membership cleanup failed", e);
+  }
+}
+
 export async function getHouseholdMembership(
   userId: string,
 ): Promise<HouseholdMember | null> {
@@ -171,6 +181,23 @@ export async function getHouseholdMembership(
       );
       const snapshot = await getDocs(q);
       if (snapshot.empty) return null;
+
+      // Self-heal dedup: if the anchor doc exists alongside legacy rows,
+      // delete the legacy rows so the member list shows each person once.
+      const anchorDoc = snapshot.docs.find((d) => d.id === userId);
+      if (anchorDoc) {
+        const duplicates = snapshot.docs.filter((d) => d.id !== userId);
+        if (duplicates.length > 0) {
+          for (const dup of duplicates) {
+            try {
+              await deleteDoc(doc(db, "household_members", dup.id));
+            } catch (e) {
+              console.warn("Duplicate membership cleanup skipped", e);
+            }
+          }
+        }
+        return { id: anchorDoc.id, ...anchorDoc.data() } as HouseholdMember;
+      }
       return {
         id: snapshot.docs[0].id,
         ...snapshot.docs[0].data(),
@@ -282,6 +309,10 @@ export async function checkAndAcceptInvite(
       },
       { merge: true },
     );
+
+    // Remove any legacy rows from the user's previous household so the
+    // member list stays clean (anchor is the single source of truth)
+    await removeLegacyMembershipRows(userId);
 
     // Mark accepted AFTER the membership write (the rule required it pending)
     await updateDoc(inviteRef, { status: "accepted" });

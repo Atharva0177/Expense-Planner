@@ -81,11 +81,11 @@ service cloud.firestore {
       allow read: if signedIn()
         && (memberId == uid() || ownsExisting() || isMember(resource.data.household_id));
 
-      // Writes only to your own membership doc, and only when:
+      // Anchor self-management (deterministic doc id = your uid), allowed when:
       //  - you founded the household, or
       //  - you are already a member of it (re-sync/no-op), or
       //  - you present a valid pending invite for exactly that household.
-      allow create, update: if memberId == uid()
+      allow create: if memberId == uid()
         && ownsIncoming()
         && request.resource.data.household_id != null
         && (
@@ -99,8 +99,34 @@ service cloud.firestore {
           )
         );
 
-      // Users leave by deleting their own membership doc
-      allow delete: if ownsExisting() && memberId == uid();
+      // (a) same conditions for re-syncing your own anchor, OR
+      // (b) role management by any household member (the app's "Make Primary"
+      //     feature) - restricted to role fields ONLY, so membership ownership
+      //     and household can never be altered by a role change.
+      allow update: if (
+          memberId == uid()
+          && ownsIncoming()
+          && request.resource.data.household_id != null
+          && (
+            get(/databases/$(database)/documents/households/$(request.resource.data.household_id)).data.created_by == uid()
+            || isMember(request.resource.data.household_id)
+            || (
+              request.resource.data.invite_code != null
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.status == 'pending'
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.household_id == request.resource.data.household_id
+              && get(/databases/$(database)/documents/invites/$(request.resource.data.invite_code)).data.expires_at > request.time
+            )
+          )
+        )
+        || (
+          isMember(resource.data.household_id)
+          && diff().affectedKeys().hasOnly(['role', 'custom_role_description'])
+        );
+
+      // Users leave by deleting their own membership docs. Ownership is checked
+      // by FIELD (user_id), not doc id - legacy rows have auto-generated IDs
+      // and must be deletable for leave/dedup cleanup to work.
+      allow delete: if ownsExisting();
     }
 
     // ---- Invites (deterministic doc id = invite code; the 6-char code is the
