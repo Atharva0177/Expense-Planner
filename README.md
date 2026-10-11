@@ -50,8 +50,8 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 - **Full Editing & Split Transactions**: edit any transaction or income entry (amount, category, date, note, mode) via modals; split one amount into up to 5 equal entries
 - **Payslip / Form 16 Parsing**: upload a payslip image on the Income tab → AI extracts all salary components (basic, HRA, allowances, EPF, TDS, net) and prefills the entry form (`/api/parse-payslip`)
 - **Search Across Everything**: search bar on the Expenses tab matches notes, categories, payment modes, amounts, and dates across **all months**
-- **Telegram Bot (n8n)**: A self-hosted n8n workflow (`n8n/expense-planner-bot.json`, 114 nodes) giving Telegram near-full parity with the website:
-  - Log expenses (`/spent`), natural-language logging (plain text like "spent 250 on groceries"), scan receipt photos with inline Save/Discard confirmation, record income (`/earned`), and undo mistakes (`/undo`)
+- **Telegram Bot (n8n)**: A self-hosted n8n workflow (`n8n/expense-planner-bot.json`, 118 nodes) giving Telegram near-full parity with the website:
+  - Log expenses (`/spent`), natural-language logging (plain text like "spent 250 on groceries"), scan receipt photos with inline Save/Discard confirmation (the photo itself is stored in Firestore and shows up under the entry's 📎 on the website), record income (`/earned`), and undo mistakes (`/undo`)
   - Budgets (`/budget`, `/budgets`), savings goals (`/goal`, `/goals`, `/contribute`), loans with full amortization schedules (`/loan`, `/loans`), and recurring rules (`/recurring`, `/recurrings`)
   - Views: monthly summary with savings rate, recent entries, budgets, goals, loans, recurring rules, household members, investments, categories, CSV export - plus `/ask <question>` to chat with your data
   - **Daily 9 AM auto-processing of due recurring rules** — something the website only does when its Recurring tab is opened
@@ -185,9 +185,9 @@ expense-planner/
 │   └── health.ts           # Health check endpoint for Vercel
 ├── functions/api/          # Cloudflare Pages Functions (web app receipt scanning + health)
 ├── n8n/                    # Telegram bot automation (self-hosted n8n)
-│   ├── expense-planner-bot.json  # Importable n8n workflow (114 nodes, 2 triggers) - GENERATED, see generate-workflow.cjs
+│   ├── expense-planner-bot.json  # Importable n8n workflow (118 nodes, 2 triggers) - GENERATED, see generate-workflow.cjs
 │   ├── generate-workflow.cjs     # Source of truth for the workflow JSON (npm run bot:generate)
-│   ├── validators/               # 128-test logic suite + graph/wiring/code validators (npm run bot:validate)
+│   ├── validators/               # 149-test logic suite + graph/wiring/code validators (npm run bot:validate)
 │   ├── scripts/deploy-workflow.mjs  # CI auto-deploy to live n8n via REST API (credential-preserving)
 │   ├── classify-update.js  # Standalone export of the Classify Update node code (hot-fix pasting)
 │   └── README.md           # Bot setup & operations guide

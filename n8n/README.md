@@ -84,6 +84,27 @@ Photo message → Get Telegram Photo (largest variant, by width×height)
              → (fallback: 2.5-flash) → shared expense pipeline
 ```
 
+### Photo storage (receipts are visible on the website)
+
+The scanned photo itself is stored in Firestore — in the same side-collection
+the website's lazy 📎 viewer reads — and attached to the logged entry:
+
+- **At scan time** (`Build Scan Confirmation`), the photo's base64 (≤ 800,000
+  chars, the website's rule budget) is parked alongside the pending scan in
+  workflow static data. Bigger photos are skipped; the entry still saves.
+- **On Save** (button tap *or* typing `save`), `Has Receipt Photo?` routes
+  the entry through `Write Receipt Photo`, which POSTs
+  `receipt_photos/{txId}` with the website's exact doc schema
+  (`user_id`, `household_id`, `image`, `mime`, `size`, `created_at`) before
+  `Create Transaction` writes the entry with `has_receipt_photo: true`.
+  The transaction and the photo share the same document id.
+- **On Discard or expiry** (1h), the parked photo is dropped with the pending
+  scan — nothing is ever written.
+- **On `/undo`**, `Delete Receipt Photo` removes the photo doc alongside the
+  transaction (404 = no photo on that entry, tolerated).
+- A failed photo write never blocks the expense (`onError: continue`) — the
+  website's viewer shows a graceful load error instead.
+
 ## Receipt scanning quality
 
 Receipt extraction uses a strict, field-by-field prompt (grand total only —
@@ -163,7 +184,7 @@ The workflow JSON is **generated** — the source of truth is
 
 ```bash
 npm run bot:generate   # regenerate n8n/expense-planner-bot.json from the generator
-npm run bot:validate   # 128-test logic suite + graph/wiring/code/expression validators
+npm run bot:validate   # 149-test logic suite + graph/wiring/code/expression validators
 ```
 
 CI runs both on every push (the `bot-validate` job), plus a drift check that

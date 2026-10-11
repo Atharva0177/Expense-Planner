@@ -2,7 +2,7 @@
   "name": "Expense Planner Bot",
   "nodes": [
     {
-      "id": "node-01-1zmd2t",
+      "id": "node-01",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.5,
@@ -10,7 +10,7 @@
         -80,
         340
       ],
-      "webhookId": "node-02-r4gs1p",
+      "webhookId": "node-02",
       "parameters": {
         "updates": [
           "message",
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "node-03-jpg09m",
+      "id": "node-03",
       "name": "Classify Update",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -36,7 +36,7 @@
       }
     },
     {
-      "id": "node-04-c2o1l3",
+      "id": "node-04",
       "name": "Route by Intent",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -701,7 +701,7 @@
       }
     },
     {
-      "id": "node-05-tktnhp",
+      "id": "node-05",
       "name": "Get Telegram Photo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -718,7 +718,7 @@
       }
     },
     {
-      "id": "node-06-fgff4o",
+      "id": "node-06",
       "name": "Extract Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -732,7 +732,7 @@
       }
     },
     {
-      "id": "node-07-twolav",
+      "id": "node-07",
       "name": "Image OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -766,7 +766,7 @@
       }
     },
     {
-      "id": "node-08-0sy8v7",
+      "id": "node-08",
       "name": "Gemini Scan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -790,7 +790,7 @@
       }
     },
     {
-      "id": "node-09-rgkug5",
+      "id": "node-09",
       "name": "Processing Receipt",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -810,7 +810,7 @@
       }
     },
     {
-      "id": "node-10-jca3fn",
+      "id": "node-10",
       "name": "Parse Scan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -824,7 +824,7 @@
       }
     },
     {
-      "id": "node-11-k666mc",
+      "id": "node-11",
       "name": "Scan OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -858,7 +858,7 @@
       }
     },
     {
-      "id": "node-12-pnmn16",
+      "id": "node-12",
       "name": "Gemini Scan Fallback",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -882,7 +882,7 @@
       }
     },
     {
-      "id": "node-13-srbicj",
+      "id": "node-13",
       "name": "Parse Scan Fallback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -896,7 +896,7 @@
       }
     },
     {
-      "id": "node-14-vts857",
+      "id": "node-14",
       "name": "Scan OK Fallback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -930,7 +930,7 @@
       }
     },
     {
-      "id": "node-15-f8bijo",
+      "id": "node-15",
       "name": "Reply Scan Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -950,7 +950,7 @@
       }
     },
     {
-      "id": "node-16-5o8fv5",
+      "id": "node-16",
       "name": "Build Scan Confirmation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -960,11 +960,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\n// Prefer the pro-fallback scan result when present\nlet scan = null;\ntry { const s2 = $('Parse Scan Fallback').first().json; if (s2 && s2.scanOK) scan = s2; } catch (e) {}\nif (!scan) { try { const s1 = $('Parse Scan').first().json; if (s1 && s1.scanOK) scan = s1; } catch (e) {} }\nif (!scan) return [];\n\n// esc for Telegram HTML\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\n\nconst payload = {\n  userId: scan.userId,\n  chatId: scan.chatId,\n  amount: scan.amount,\n  rawCategory: scan.category || 'Other',\n  note: scan.merchant || 'Telegram receipt',\n  txDate: scan.date,\n  merchant: scan.merchant,\n  source: 'telegram_receipt',\n  dateAdjusted: !!scan.dateAdjusted,\n  originalDate: scan.originalDate || '',\n};\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.pendingScans) staticData.pendingScans = {};\n// cleanup entries older than 1 hour, cap total\nconst cutoff = Date.now() - 3600 * 1000;\nfor (const k of Object.keys(staticData.pendingScans)) {\n  if ((staticData.pendingScans[k].created || 0) < cutoff) delete staticData.pendingScans[k];\n}\nconst keys = Object.keys(staticData.pendingScans);\nwhile (keys.length >= 20) { delete staticData.pendingScans[keys.shift()]; }\n\nconst saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nstaticData.pendingScans[saveId] = { payload, created: Date.now() };\n// Per-user pointer so a text reply like 'save' can confirm the latest\n// parked scan without knowing the saveId (Read Callback resolves it).\nif (!staticData.pendingScansByUser) staticData.pendingScansByUser = {};\nstaticData.pendingScansByUser[scan.userId] = saveId;\n\nlet reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\u{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\u{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\u{1F4C5} ' + scan.date;\nif (scan.dateAdjusted) reply += '\\n\\u2139\\uFE0F (receipt dated ' + scan.originalDate + ' - will be saved under today)';\nreply += '\\n\\n\\u2705 Save or \\u274C Discard below - replying \\\"save\\\" or \\\"discard\\\" also work. To fix a value first, save it, then send /edit.';\n\nreturn [{ json: { chatId: c.chatId, replyText: reply, saveId, cbAction: 'none' } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\n// Prefer the pro-fallback scan result when present\nlet scan = null;\ntry { const s2 = $('Parse Scan Fallback').first().json; if (s2 && s2.scanOK) scan = s2; } catch (e) {}\nif (!scan) { try { const s1 = $('Parse Scan').first().json; if (s1 && s1.scanOK) scan = s1; } catch (e) {} }\nif (!scan) return [];\n\n// esc for Telegram HTML\nfunction esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }\n\nconst payload = {\n  userId: scan.userId,\n  chatId: scan.chatId,\n  amount: scan.amount,\n  rawCategory: scan.category || 'Other',\n  note: scan.merchant || 'Telegram receipt',\n  txDate: scan.date,\n  merchant: scan.merchant,\n  source: 'telegram_receipt',\n  dateAdjusted: !!scan.dateAdjusted,\n  originalDate: scan.originalDate || '',\n};\n\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.pendingScans) staticData.pendingScans = {};\n// cleanup entries older than 1 hour, cap total\nconst cutoff = Date.now() - 3600 * 1000;\nfor (const k of Object.keys(staticData.pendingScans)) {\n  if ((staticData.pendingScans[k].created || 0) < cutoff) delete staticData.pendingScans[k];\n}\nconst keys = Object.keys(staticData.pendingScans);\nwhile (keys.length >= 20) { delete staticData.pendingScans[keys.shift()]; }\n\n// Stash the receipt photo (base64 from Extract Image) so it can be stored\n// in receipt_photos/{txId} when the user confirms. Firestore docs cap at\n// ~1MB; the website's rule budget is 800000 base64 chars, so oversized\n// photos are skipped - the entry still saves without a photo.\nlet photoData = '';\nlet photoMime = 'image/jpeg';\ntry {\n  const ex = $('Extract Image').first().json;\n  if (ex && ex.imageBase64 && ex.imageBase64.length <= 800000) {\n    photoData = ex.imageBase64;\n    photoMime = ex.mimeType || 'image/jpeg';\n  }\n} catch (e) { /* no image data - entry still saves without the photo */ }\n\nconst saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nstaticData.pendingScans[saveId] = { payload, created: Date.now(), photoData, photoMime };\n// Per-user pointer so a text reply like 'save' can confirm the latest\n// parked scan without knowing the saveId (Read Callback resolves it).\nif (!staticData.pendingScansByUser) staticData.pendingScansByUser = {};\nstaticData.pendingScansByUser[scan.userId] = saveId;\n\nlet reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\u{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\u{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\u{1F4C5} ' + scan.date;\nif (scan.dateAdjusted) reply += '\\n\\u2139\\uFE0F (receipt dated ' + scan.originalDate + ' - will be saved under today)';\nreply += '\\n\\n\\u2705 Save or \\u274C Discard below - replying \\\"save\\\" or \\\"discard\\\" also work. To fix a value first, save it, then send /edit.';\nif (photoData) reply += '\\n\\u{1F4CE} The receipt photo will be attached to the entry (visible on the website).';\n\nreturn [{ json: { chatId: c.chatId, replyText: reply, saveId, cbAction: 'none' } }];"
       }
     },
     {
-      "id": "node-17-hujyvw",
+      "id": "node-17",
       "name": "Send Scan Confirmation",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1011,7 +1011,7 @@
       }
     },
     {
-      "id": "node-18-f9txqz",
+      "id": "node-18",
       "name": "Answer Callback",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1028,7 +1028,7 @@
       }
     },
     {
-      "id": "node-19-825pd7",
+      "id": "node-19",
       "name": "Read Callback",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1038,11 +1038,11 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c = $('Classify Update').first().json;\nconst staticData = $getWorkflowStaticData('global');\n// Resolve the pending scan: by callback id for inline-button taps, or by\n// the sender's latest parked scan for text confirmations like 'save'.\nlet saveId = c.cbId;\nif (!saveId) {\n  saveId = (staticData.pendingScansByUser || {})[c.userId] || '';\n}\nconst pending = (staticData.pendingScans || {})[saveId];\n// remove immediately so double-taps and repeated 'save' texts never double-write\nif (staticData.pendingScans && staticData.pendingScans[saveId]) delete staticData.pendingScans[saveId];\nif (staticData.pendingScansByUser && staticData.pendingScansByUser[c.userId] === saveId) delete staticData.pendingScansByUser[c.userId];\n\nif (!pending) {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'No pending receipt to save. Send a receipt photo first - or tap the Save/Discard buttons under the scan result.' } }];\n}\nif (c.cbAction === 'save') {\n  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save' }) }];\n}\nif (c.cbAction === 'discard') {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: '\\u274C Receipt scan discarded.' } }];\n}\nreturn [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'Unknown button action.' } }];"
+        "jsCode": "const c = $('Classify Update').first().json;\nconst staticData = $getWorkflowStaticData('global');\n// Resolve the pending scan: by callback id for inline-button taps, or by\n// the sender's latest parked scan for text confirmations like 'save'.\nlet saveId = c.cbId;\nif (!saveId) {\n  saveId = (staticData.pendingScansByUser || {})[c.userId] || '';\n}\nconst pending = (staticData.pendingScans || {})[saveId];\n// remove immediately so double-taps and repeated 'save' texts never double-write\nif (staticData.pendingScans && staticData.pendingScans[saveId]) delete staticData.pendingScans[saveId];\nif (staticData.pendingScansByUser && staticData.pendingScansByUser[c.userId] === saveId) delete staticData.pendingScansByUser[c.userId];\n\nif (!pending) {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'No pending receipt to save. Send a receipt photo first - or tap the Save/Discard buttons under the scan result.' } }];\n}\nif (c.cbAction === 'save') {\n  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save', photoData: pending.photoData || '', photoMime: pending.photoMime || 'image/jpeg' }) }];\n}\nif (c.cbAction === 'discard') {\n  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: '\\u274C Receipt scan discarded.' } }];\n}\nreturn [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'Unknown button action.' } }];"
       }
     },
     {
-      "id": "node-20-yt184e",
+      "id": "node-20",
       "name": "Is Save?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1076,7 +1076,7 @@
       }
     },
     {
-      "id": "node-21-ls7lyw",
+      "id": "node-21",
       "name": "Reply Callback Result",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1096,7 +1096,7 @@
       }
     },
     {
-      "id": "node-22-o34q2c",
+      "id": "node-22",
       "name": "Build NL Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1110,7 +1110,7 @@
       }
     },
     {
-      "id": "node-23-ze56er",
+      "id": "node-23",
       "name": "Gemini NL Parse",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1134,7 +1134,7 @@
       }
     },
     {
-      "id": "node-24-yqyzpn",
+      "id": "node-24",
       "name": "Parse NL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1148,7 +1148,7 @@
       }
     },
     {
-      "id": "node-25-34ee49",
+      "id": "node-25",
       "name": "NL Expense?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1182,7 +1182,7 @@
       }
     },
     {
-      "id": "node-26-ltfozm",
+      "id": "node-26",
       "name": "Build Edit",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1196,7 +1196,7 @@
       }
     },
     {
-      "id": "node-27-dk3auc",
+      "id": "node-27",
       "name": "Write Edit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1219,7 +1219,7 @@
       }
     },
     {
-      "id": "node-28-n1q5pc",
+      "id": "node-28",
       "name": "Reply Edit",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1239,7 +1239,7 @@
       }
     },
     {
-      "id": "node-29-euaebg",
+      "id": "node-29",
       "name": "Build Ask Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1253,7 +1253,7 @@
       }
     },
     {
-      "id": "node-30-nkcujx",
+      "id": "node-30",
       "name": "Gemini Ask",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1277,7 +1277,7 @@
       }
     },
     {
-      "id": "node-31-2usmtv",
+      "id": "node-31",
       "name": "Build Ask Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1291,7 +1291,7 @@
       }
     },
     {
-      "id": "node-32-q1aanz",
+      "id": "node-32",
       "name": "Register Bot Menu",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1312,7 +1312,7 @@
       }
     },
     {
-      "id": "node-33-upe92x",
+      "id": "node-33",
       "name": "Reply Menu",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1332,7 +1332,7 @@
       }
     },
     {
-      "id": "node-34-rki6i4",
+      "id": "node-34",
       "name": "Is Album Photo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1366,7 +1366,7 @@
       }
     },
     {
-      "id": "node-35-iqizwb",
+      "id": "node-35",
       "name": "Query Categories",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1386,7 +1386,7 @@
       }
     },
     {
-      "id": "node-36-zqyfxh",
+      "id": "node-36",
       "name": "Collect Categories",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1400,7 +1400,7 @@
       }
     },
     {
-      "id": "node-37-z1m6fw",
+      "id": "node-37",
       "name": "Query Household",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1420,7 +1420,7 @@
       }
     },
     {
-      "id": "node-38-jcsp1f",
+      "id": "node-38",
       "name": "Build Transaction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1430,16 +1430,121 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const p = $('Collect Categories').first().json;\n\nlet householdId = null;\ntry {\n  const d = (items[0].json && items[0].json.document) ? items[0].json.document : null;\n  householdId = (d && d.fields && d.fields.household_id) ? d.fields.household_id.stringValue : null;\n} catch (e) { householdId = null; }\n\nconst cats = p.categories || [];\nconst raw = (p.rawCategory || 'Other').toString().trim();\nconst combined = (raw + ' ' + (p.note || '')).trim().toLowerCase();\n\n// 1) Match a known category as a prefix of \"&lt;category&gt; <note>\" (supports multi-word categories)\nlet finalCategory = null;\nlet matchedWords = 0;\nfor (const c of cats) {\n  if (combined.startsWith(c.toLowerCase())) {\n    finalCategory = c;\n    matchedWords = c.toLowerCase().split(/\\s+/).length;\n    break;\n  }\n}\n\n// 2) Exact single-word match\nif (!finalCategory) {\n  for (const c of cats) {\n    if (c.toLowerCase() === raw.toLowerCase()) { finalCategory = c; matchedWords = 1; break; }\n  }\n}\n\n// 3) Custom category: capitalize + collect suggestions\nlet suggestions = '';\nif (!finalCategory) {\n  finalCategory = raw.charAt(0).toUpperCase() + raw.slice(1);\n  matchedWords = 1;\n  const low = raw.toLowerCase();\n  const close = [];\n  for (const c of cats) {\n    const cl = c.toLowerCase();\n    let n = 0;\n    while (n < cl.length && n < low.length && cl.charAt(n) === low.charAt(n)) n++;\n    if (n >= Math.max(3, Math.floor(low.length * 0.6))) close.push(c);\n  }\n  if (close.length > 0) suggestions = close.slice(0, 4).join(', ');\n}\n\n// Recompute the note: whatever follows the matched category words\nlet note;\nif (p.source === 'telegram_receipt') {\n  note = p.merchant || p.note || 'Telegram receipt';\n} else {\n  const words = combined.split(/\\s+/);\n  note = words.slice(matchedWords).join(' ').trim() || (p.note || '') || finalCategory || 'Telegram entry';\n}\n\n// Build the Firestore REST document body with EXPLICIT field types.\n// CRITICAL: date must be stringValue - the n8n Firestore node auto-converts\n// date-like strings to timestamps, which breaks the web app's string range queries.\nconst amountField = Number.isInteger(p.amount) ? { integerValue: String(p.amount) } : { doubleValue: p.amount };\nconst txFields = {\n  user_id: { stringValue: p.userId },\n  ...(householdId ? { household_id: { stringValue: householdId } } : {}),\n  category_id: { stringValue: finalCategory },\n  amount: amountField,\n  date: { stringValue: p.txDate },\n  note: { stringValue: note },\n  payment_mode: { stringValue: 'UPI' },\n  source: { stringValue: p.source },\n  created_at: { timestampValue: new Date().toISOString() },\n};\nconst firestoreBody = JSON.stringify({ fields: txFields });\n\nreturn [{ json: {\n  docId: 'tg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),\n  user_id: p.userId,\n  household_id: householdId,\n  category_id: finalCategory,\n  amount: p.amount,\n  date: p.txDate,\n  note,\n  payment_mode: 'UPI',\n  source: p.source,\n  created_at: new Date().toISOString(),\n  chatId: p.chatId,\n  suggestions,\n  date_adjusted: !!p.dateAdjusted,\n  original_date: p.originalDate || '',\n  firestoreBody,\n} }];"
+        "jsCode": "const p = $('Collect Categories').first().json;\n\nlet householdId = null;\ntry {\n  const d = (items[0].json && items[0].json.document) ? items[0].json.document : null;\n  householdId = (d && d.fields && d.fields.household_id) ? d.fields.household_id.stringValue : null;\n} catch (e) { householdId = null; }\n\nconst cats = p.categories || [];\nconst raw = (p.rawCategory || 'Other').toString().trim();\nconst combined = (raw + ' ' + (p.note || '')).trim().toLowerCase();\n\n// 1) Match a known category as a prefix of \"&lt;category&gt; <note>\" (supports multi-word categories)\nlet finalCategory = null;\nlet matchedWords = 0;\nfor (const c of cats) {\n  if (combined.startsWith(c.toLowerCase())) {\n    finalCategory = c;\n    matchedWords = c.toLowerCase().split(/\\s+/).length;\n    break;\n  }\n}\n\n// 2) Exact single-word match\nif (!finalCategory) {\n  for (const c of cats) {\n    if (c.toLowerCase() === raw.toLowerCase()) { finalCategory = c; matchedWords = 1; break; }\n  }\n}\n\n// 3) Custom category: capitalize + collect suggestions\nlet suggestions = '';\nif (!finalCategory) {\n  finalCategory = raw.charAt(0).toUpperCase() + raw.slice(1);\n  matchedWords = 1;\n  const low = raw.toLowerCase();\n  const close = [];\n  for (const c of cats) {\n    const cl = c.toLowerCase();\n    let n = 0;\n    while (n < cl.length && n < low.length && cl.charAt(n) === low.charAt(n)) n++;\n    if (n >= Math.max(3, Math.floor(low.length * 0.6))) close.push(c);\n  }\n  if (close.length > 0) suggestions = close.slice(0, 4).join(', ');\n}\n\n// Recompute the note: whatever follows the matched category words\nlet note;\nif (p.source === 'telegram_receipt') {\n  note = p.merchant || p.note || 'Telegram receipt';\n} else {\n  const words = combined.split(/\\s+/);\n  note = words.slice(matchedWords).join(' ').trim() || (p.note || '') || finalCategory || 'Telegram entry';\n}\n\n// Receipt photo (scan-confirm flow only): Read Callback passes the parked\n// photo through. Other flows (/spent, natural language) never executed that\n// node, so the try/catch leaves photoData empty and no photo is stored.\nlet photoData = '';\nlet photoMime = 'image/jpeg';\ntry {\n  const rc = $('Read Callback').first().json;\n  photoData = rc.photoData || '';\n  photoMime = rc.photoMime || 'image/jpeg';\n} catch (e) { photoData = ''; }\n\n// Build the Firestore REST document body with EXPLICIT field types.\n// CRITICAL: date must be stringValue - the n8n Firestore node auto-converts\n// date-like strings to timestamps, which breaks the web app's string range queries.\nconst amountField = Number.isInteger(p.amount) ? { integerValue: String(p.amount) } : { doubleValue: p.amount };\nconst txFields = {\n  user_id: { stringValue: p.userId },\n  ...(householdId ? { household_id: { stringValue: householdId } } : {}),\n  category_id: { stringValue: finalCategory },\n  amount: amountField,\n  date: { stringValue: p.txDate },\n  note: { stringValue: note },\n  payment_mode: { stringValue: 'UPI' },\n  source: { stringValue: p.source },\n  created_at: { timestampValue: new Date().toISOString() },\n  has_receipt_photo: { booleanValue: !!photoData },\n};\nconst firestoreBody = JSON.stringify({ fields: txFields });\n\n// Photo doc for receipt_photos/{docId} - the SAME schema the website's\n// lazy paperclip viewer reads: { user_id, household_id?, image, mime,\n// size (base64 length, int), created_at }. Ownership mirrors the\n// transaction so the Firestore rules show it to household members.\nlet photoFirestoreBody = '';\nif (photoData) {\n  photoFirestoreBody = JSON.stringify({ fields: {\n    user_id: { stringValue: p.userId },\n    ...(householdId ? { household_id: { stringValue: householdId } } : {}),\n    image: { stringValue: photoData },\n    mime: { stringValue: photoMime },\n    size: { integerValue: String(photoData.length) },\n    created_at: { timestampValue: new Date().toISOString() },\n  } });\n}\n\nreturn [{ json: {\n  docId: 'tg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),\n  user_id: p.userId,\n  household_id: householdId,\n  category_id: finalCategory,\n  amount: p.amount,\n  date: p.txDate,\n  note,\n  payment_mode: 'UPI',\n  source: p.source,\n  created_at: new Date().toISOString(),\n  chatId: p.chatId,\n  suggestions,\n  date_adjusted: !!p.dateAdjusted,\n  original_date: p.originalDate || '',\n  firestoreBody,\n  photoFirestoreBody,\n} }];"
       }
     },
     {
-      "id": "node-39-afoueh",
+      "id": "node-39",
+      "name": "Has Receipt Photo?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1540,
+        -140
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "rule-with-photo",
+                    "leftValue": "={{ $json.photoFirestoreBody }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "With Photo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "rule-no-photo",
+                    "leftValue": "={{ $json.photoFirestoreBody }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No Photo"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-40",
+      "name": "Write Receipt Photo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        40
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/gen-lang-client-0213350901/databases/ai-studio-59a52c44-ee54-464b-8932-111bd2bc67b5/documents/receipt_photos?documentId={{ $json.docId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.photoFirestoreBody }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-41",
+      "name": "Finalize Transaction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        40
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{ json: $('Build Transaction').first().json }];"
+      }
+    },
+    {
+      "id": "node-42",
       "name": "Create Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1640,
+        1860,
         -140
       ],
       "retryOnFail": true,
@@ -1457,12 +1562,12 @@
       }
     },
     {
-      "id": "node-40-06l0rx",
+      "id": "node-43",
       "name": "Build Budget Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1860,
+        2080,
         -140
       ],
       "parameters": {
@@ -1471,12 +1576,12 @@
       }
     },
     {
-      "id": "node-41-j97q8s",
+      "id": "node-44",
       "name": "Query Budgets",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        2080,
+        2300,
         -140
       ],
       "parameters": {
@@ -1491,12 +1596,12 @@
       }
     },
     {
-      "id": "node-42-6jtm8m",
+      "id": "node-45",
       "name": "Collect Budgets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2300,
+        2520,
         -140
       ],
       "parameters": {
@@ -1505,12 +1610,12 @@
       }
     },
     {
-      "id": "node-43-gywiqy",
+      "id": "node-46",
       "name": "Query Month Transactions (Budget)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
       "position": [
-        2520,
+        2740,
         -140
       ],
       "parameters": {
@@ -1525,12 +1630,12 @@
       }
     },
     {
-      "id": "node-44-w98ejq",
+      "id": "node-47",
       "name": "Budget Check & Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2740,
+        2960,
         -140
       ],
       "parameters": {
@@ -1539,7 +1644,7 @@
       }
     },
     {
-      "id": "node-45-d20ozo",
+      "id": "node-48",
       "name": "Send Expense Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1559,7 +1664,7 @@
       }
     },
     {
-      "id": "node-46-0dokcg",
+      "id": "node-49",
       "name": "Query Household (Income)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1579,7 +1684,7 @@
       }
     },
     {
-      "id": "node-47-7p6xgm",
+      "id": "node-50",
       "name": "Build Income Entry",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1593,7 +1698,7 @@
       }
     },
     {
-      "id": "node-48-0psmy0",
+      "id": "node-51",
       "name": "Create Income Entry",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1616,7 +1721,7 @@
       }
     },
     {
-      "id": "node-49-w90k99",
+      "id": "node-52",
       "name": "Reply Income",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1636,7 +1741,7 @@
       }
     },
     {
-      "id": "node-50-93hbtb",
+      "id": "node-53",
       "name": "Query Month Transactions (Summary)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1656,7 +1761,7 @@
       }
     },
     {
-      "id": "node-51-uoqhq1",
+      "id": "node-54",
       "name": "Collect Summary Tx",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1670,7 +1775,7 @@
       }
     },
     {
-      "id": "node-52-lzoxuf",
+      "id": "node-55",
       "name": "Query Month Incomes",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1690,7 +1795,7 @@
       }
     },
     {
-      "id": "node-53-b47iej",
+      "id": "node-56",
       "name": "Build Summary Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1704,7 +1809,7 @@
       }
     },
     {
-      "id": "node-54-konrxw",
+      "id": "node-57",
       "name": "Send Summary Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1724,7 +1829,7 @@
       }
     },
     {
-      "id": "node-55-6wmo0i",
+      "id": "node-58",
       "name": "Query Invites",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1744,7 +1849,7 @@
       }
     },
     {
-      "id": "node-56-432oxk",
+      "id": "node-59",
       "name": "Validate Invite",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1758,7 +1863,7 @@
       }
     },
     {
-      "id": "node-57-4g7vu4",
+      "id": "node-60",
       "name": "Invite Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1792,7 +1897,7 @@
       }
     },
     {
-      "id": "node-58-jo2g3z",
+      "id": "node-61",
       "name": "Create or Update Membership",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1812,7 +1917,7 @@
       }
     },
     {
-      "id": "node-59-ptnjxh",
+      "id": "node-62",
       "name": "Mark Invite Accepted",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1833,7 +1938,7 @@
       }
     },
     {
-      "id": "node-60-w4d1nm",
+      "id": "node-63",
       "name": "Reply Join Success",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1853,7 +1958,7 @@
       }
     },
     {
-      "id": "node-61-wblj7f",
+      "id": "node-64",
       "name": "Reply Join Failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1873,7 +1978,7 @@
       }
     },
     {
-      "id": "node-62-7xta85",
+      "id": "node-65",
       "name": "Query My Transactions",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -1893,7 +1998,7 @@
       }
     },
     {
-      "id": "node-63-jc7yya",
+      "id": "node-66",
       "name": "Build Undo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1907,7 +2012,7 @@
       }
     },
     {
-      "id": "node-64-fw55o2",
+      "id": "node-67",
       "name": "Delete Last Transaction",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -1927,7 +2032,25 @@
       }
     },
     {
-      "id": "node-65-v1o2v8",
+      "id": "node-68",
+      "name": "Delete Receipt Photo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        460
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://firestore.googleapis.com/v1/projects/gen-lang-client-0213350901/databases/ai-studio-59a52c44-ee54-464b-8932-111bd2bc67b5/documents/receipt_photos/{{ $('Build Undo').first().json.deleteDocId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-69",
       "name": "Reply Undo",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1947,7 +2070,7 @@
       }
     },
     {
-      "id": "node-66-apw0hs",
+      "id": "node-70",
       "name": "Build Recent Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1961,7 +2084,7 @@
       }
     },
     {
-      "id": "node-67-4ptnz3",
+      "id": "node-71",
       "name": "Build Export CSV",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1975,7 +2098,7 @@
       }
     },
     {
-      "id": "node-68-vkjlfg",
+      "id": "node-72",
       "name": "Send Export Document",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -1992,7 +2115,7 @@
       }
     },
     {
-      "id": "node-69-xrli40",
+      "id": "node-73",
       "name": "Query Categories (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2012,7 +2135,7 @@
       }
     },
     {
-      "id": "node-70-kfo81z",
+      "id": "node-74",
       "name": "Build Categories Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2026,7 +2149,7 @@
       }
     },
     {
-      "id": "node-71-hl9pag",
+      "id": "node-75",
       "name": "Query Household (Hub)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2046,7 +2169,7 @@
       }
     },
     {
-      "id": "node-72-no1tpw",
+      "id": "node-76",
       "name": "Dispatch After Household",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
@@ -2327,7 +2450,7 @@
       }
     },
     {
-      "id": "node-73-jngds4",
+      "id": "node-77",
       "name": "Query Month Budgets (Set)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2347,7 +2470,7 @@
       }
     },
     {
-      "id": "node-74-yce7n3",
+      "id": "node-78",
       "name": "Build Budget Set",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2361,7 +2484,7 @@
       }
     },
     {
-      "id": "node-75-sbworr",
+      "id": "node-79",
       "name": "Reply Budget Set",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2381,7 +2504,7 @@
       }
     },
     {
-      "id": "node-76-p7xknt",
+      "id": "node-80",
       "name": "Query Budgets (List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2401,7 +2524,7 @@
       }
     },
     {
-      "id": "node-77-070m5i",
+      "id": "node-81",
       "name": "Collect Budgets (List)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2415,7 +2538,7 @@
       }
     },
     {
-      "id": "node-78-66c8bj",
+      "id": "node-82",
       "name": "Query Month Tx (Budgets List)",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2435,7 +2558,7 @@
       }
     },
     {
-      "id": "node-79-4jcdrt",
+      "id": "node-83",
       "name": "Build Budgets Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2449,7 +2572,7 @@
       }
     },
     {
-      "id": "node-80-yi77rb",
+      "id": "node-84",
       "name": "Build Goal",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2463,7 +2586,7 @@
       }
     },
     {
-      "id": "node-81-mm2xgh",
+      "id": "node-85",
       "name": "Reply Goal",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2483,7 +2606,7 @@
       }
     },
     {
-      "id": "node-82-10f6aw",
+      "id": "node-86",
       "name": "Prep Goals Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2497,7 +2620,7 @@
       }
     },
     {
-      "id": "node-83-8r9x60",
+      "id": "node-87",
       "name": "Query Goals",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2517,7 +2640,7 @@
       }
     },
     {
-      "id": "node-84-7uaxnv",
+      "id": "node-88",
       "name": "Build Contribute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2531,7 +2654,7 @@
       }
     },
     {
-      "id": "node-85-6kbc24",
+      "id": "node-89",
       "name": "Goal Found?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -2565,7 +2688,7 @@
       }
     },
     {
-      "id": "node-86-yupr1f",
+      "id": "node-90",
       "name": "Reply Goal Not Found",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2585,7 +2708,7 @@
       }
     },
     {
-      "id": "node-87-itcv6n",
+      "id": "node-91",
       "name": "Reply Contribute",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2605,7 +2728,7 @@
       }
     },
     {
-      "id": "node-88-bkvizf",
+      "id": "node-92",
       "name": "Build Goals Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2619,7 +2742,7 @@
       }
     },
     {
-      "id": "node-89-ywy8cw",
+      "id": "node-93",
       "name": "Build Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2633,7 +2756,7 @@
       }
     },
     {
-      "id": "node-90-dajlw5",
+      "id": "node-94",
       "name": "Reply Recurring",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2653,7 +2776,7 @@
       }
     },
     {
-      "id": "node-91-8t4uom",
+      "id": "node-95",
       "name": "Prep Recurrings Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2667,7 +2790,7 @@
       }
     },
     {
-      "id": "node-92-01wa8x",
+      "id": "node-96",
       "name": "Query Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2687,7 +2810,7 @@
       }
     },
     {
-      "id": "node-93-llobhb",
+      "id": "node-97",
       "name": "Build Recurrings Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2701,7 +2824,7 @@
       }
     },
     {
-      "id": "node-94-atwhap",
+      "id": "node-98",
       "name": "Build Loan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2715,7 +2838,7 @@
       }
     },
     {
-      "id": "node-95-ltcrfq",
+      "id": "node-99",
       "name": "Reply Loan",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -2735,7 +2858,7 @@
       }
     },
     {
-      "id": "node-96-az2iej",
+      "id": "node-100",
       "name": "Prep Loans Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2749,7 +2872,7 @@
       }
     },
     {
-      "id": "node-97-aurt4e",
+      "id": "node-101",
       "name": "Query Loans",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2769,7 +2892,7 @@
       }
     },
     {
-      "id": "node-98-2qe1mr",
+      "id": "node-102",
       "name": "Build Loans Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2783,7 +2906,7 @@
       }
     },
     {
-      "id": "node-99-t3jkqj",
+      "id": "node-103",
       "name": "Prep Members Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2797,7 +2920,7 @@
       }
     },
     {
-      "id": "node-100-g7ejpq",
+      "id": "node-104",
       "name": "Query Members",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2817,7 +2940,7 @@
       }
     },
     {
-      "id": "node-101-fsgdhj",
+      "id": "node-105",
       "name": "Build Members Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2831,7 +2954,7 @@
       }
     },
     {
-      "id": "node-102-hsj8sa",
+      "id": "node-106",
       "name": "Prep Investments Query",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2845,7 +2968,7 @@
       }
     },
     {
-      "id": "node-103-lkxkdr",
+      "id": "node-107",
       "name": "Query Investment Accounts",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -2865,7 +2988,7 @@
       }
     },
     {
-      "id": "node-104-idadi3",
+      "id": "node-108",
       "name": "Build Investments Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -2879,7 +3002,7 @@
       }
     },
     {
-      "id": "node-105-lcp7c9",
+      "id": "node-109",
       "name": "Write Budget",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2902,7 +3025,7 @@
       }
     },
     {
-      "id": "node-106-yd58jo",
+      "id": "node-110",
       "name": "Write Contribution",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2925,7 +3048,7 @@
       }
     },
     {
-      "id": "node-107-v17um9",
+      "id": "node-111",
       "name": "Write Loan",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2948,7 +3071,7 @@
       }
     },
     {
-      "id": "node-108-mmb2sw",
+      "id": "node-112",
       "name": "Write Recurring Batch",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2971,7 +3094,7 @@
       }
     },
     {
-      "id": "node-109-dwqbk1",
+      "id": "node-113",
       "name": "Create Goal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -2994,7 +3117,7 @@
       }
     },
     {
-      "id": "node-110-evpz7p",
+      "id": "node-114",
       "name": "Create Recurring Rule",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -3017,7 +3140,7 @@
       }
     },
     {
-      "id": "node-111-b72u1m",
+      "id": "node-115",
       "name": "Send List Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -3037,7 +3160,7 @@
       }
     },
     {
-      "id": "node-112-6vbfbt",
+      "id": "node-116",
       "name": "Daily 9AM",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -3057,7 +3180,7 @@
       }
     },
     {
-      "id": "node-113-s9b8dl",
+      "id": "node-117",
       "name": "Query Due Recurring Rules",
       "type": "n8n-nodes-base.googleFirebaseCloudFirestore",
       "typeVersion": 1.1,
@@ -3077,7 +3200,7 @@
       }
     },
     {
-      "id": "node-114-u0ijgd",
+      "id": "node-118",
       "name": "Process Recurring",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -3091,7 +3214,7 @@
       }
     },
     {
-      "id": "node-115-ivviij",
+      "id": "node-119",
       "name": "Send Help",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
@@ -3370,6 +3493,17 @@
       ]
     },
     "Delete Last Transaction": {
+      "main": [
+        [
+          {
+            "node": "Delete Receipt Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Receipt Photo": {
       "main": [
         [
           {
@@ -4253,6 +4387,46 @@
       ]
     },
     "Build Transaction": {
+      "main": [
+        [
+          {
+            "node": "Has Receipt Photo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Receipt Photo?": {
+      "main": [
+        [
+          {
+            "node": "Write Receipt Photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Receipt Photo": {
+      "main": [
+        [
+          {
+            "node": "Finalize Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Transaction": {
       "main": [
         [
           {

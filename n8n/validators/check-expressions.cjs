@@ -75,6 +75,58 @@ for (const n of w.nodes.filter((n) => n.type === "n8n-nodes-base.httpRequest" &&
   else { console.log("BAD writer node", n.name, { urlOk, bodyOk, authOk }); bad++; }
 }
 
+// receipt photo writer: same REST shape, photo body, error-tolerant
+{
+  const n = w.nodes.find((x) => x.name === "Write Receipt Photo");
+  if (!n) { console.log("BAD: Write Receipt Photo node missing"); bad++; }
+  else {
+    const urlOk =
+      n.parameters.url.startsWith("=https://firestore.googleapis.com/v1/projects/") &&
+      n.parameters.url.includes("/documents/receipt_photos?documentId={{ $json.docId }}");
+    const bodyOk = n.parameters.jsonBody === "={{ $json.photoFirestoreBody }}";
+    const authOk = n.parameters.authentication === "predefinedCredentialType" && n.parameters.nodeCredentialType === "googleApi";
+    const errOk = n.onError === "continueRegularOutput";
+    if (urlOk && bodyOk && authOk && errOk) console.log("OK Write Receipt Photo -> Firestore REST photo writer (error-tolerant)");
+    else { console.log("BAD Write Receipt Photo", { urlOk, bodyOk, authOk, errOk }); bad++; }
+  }
+}
+
+// receipt photo cleanup on /undo: deletes receipt_photos/{txId}, 404 tolerated
+{
+  const n = w.nodes.find((x) => x.name === "Delete Receipt Photo");
+  if (!n) { console.log("BAD: Delete Receipt Photo node missing"); bad++; }
+  else {
+    const urlOk =
+      n.parameters.method === "DELETE" &&
+      n.parameters.url.includes("/documents/receipt_photos/{{ $('Build Undo').first().json.deleteDocId }}");
+    const errOk = n.onError === "continueRegularOutput";
+    if (urlOk && errOk) console.log("OK Delete Receipt Photo -> receipt_photos/{txId} cleanup (404 tolerated)");
+    else { console.log("BAD Delete Receipt Photo", { urlOk, errOk }); bad++; }
+  }
+}
+
+// Build Transaction must flag has_receipt_photo and mirror the website's
+// receipt_photos schema when a photo rides along
+{
+  const code = w.nodes.find((n) => n.name === "Build Transaction").parameters.jsCode;
+  const need = [
+    "has_receipt_photo: { booleanValue: !!photoData }",
+    "photoFirestoreBody = JSON.stringify({ fields: {",
+    "size: { integerValue: String(photoData.length) }",
+    "$('Read Callback').first().json",
+  ];
+  for (const s of need) {
+    if (!code.includes(s)) { console.log("BAD Build Transaction missing:", s); bad++; }
+  }
+  if (w.nodes.find((n) => n.name === "Finalize Transaction").parameters.jsCode.includes("$('Build Transaction').first().json")) {
+    console.log("OK Finalize Transaction -> restores Build Transaction payload");
+  } else { console.log("BAD Finalize Transaction passthrough"); bad++; }
+  const conf = w.nodes.find((n) => n.name === "Build Scan Confirmation").parameters.jsCode;
+  if (conf.includes("imageBase64.length <= 800000") && conf.includes("photoData, photoMime };")) {
+    console.log("OK Build Scan Confirmation -> parks photo (800k budget)");
+  } else { console.log("BAD Build Scan Confirmation photo parking"); bad++; }
+}
+
 // Gemini Scan must reference the prebuilt body
 const gemini = w.nodes.find((n) => n.name === "Gemini Scan");
 if (gemini.parameters.jsonBody !== "={{ $('Extract Image').first().json.geminiBody }}") { console.log("BAD gemini jsonBody"); bad++; }

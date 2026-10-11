@@ -123,6 +123,9 @@ const classifyOut = runCode("Classify Update", mkUpdate("/spent 250 groceries bi
   check("tx body amount typed", body.fields.amount.integerValue === "250", body.fields.amount);
   check("tx body household string", body.fields.household_id.stringValue === "hh-1", body.fields.household_id);
   check("tx body created_at timestamp", typeof body.fields.created_at.timestampValue === "string", body.fields.created_at);
+  // non-scan flows: Read Callback never executed -> no flag, no photo body
+  check("tx body no-photo flag", body.fields.has_receipt_photo.booleanValue === false, body.fields.has_receipt_photo);
+  check("tx no photo body", tx.photoFirestoreBody === "", tx.photoFirestoreBody);
 }
 
 // ---- Test 9: build transaction with multi-word category ----
@@ -600,7 +603,7 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
 
   // Read Callback: save -> payload; double-tap -> stale
   {
-    const staticStore = { pendingScans: { sc1: { payload: { userId: "telegram_1", chatId: 42, amount: 135, rawCategory: "Groceries", note: "REL", txDate: "2026-10-09", merchant: "REL", source: "telegram_receipt" }, created: Date.now() } } };
+    const staticStore = { pendingScans: { sc1: { payload: { userId: "telegram_1", chatId: 42, amount: 135, rawCategory: "Groceries", note: "REL", txDate: "2026-10-09", merchant: "REL", source: "telegram_receipt" }, created: Date.now(), photoData: "PHOTO64", photoMime: "image/png" } } };
     global.__sd = staticStore;
     const mkCb = (id, action) => {
       const c = { chatId: 42, intent: "callback", cbId: id, cbAction: action, queryId: "q1" };
@@ -614,6 +617,7 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
     const fnS = new Function("items", "$", "$getWorkflowStaticData", codeOf("Read Callback"));
     const saved = fnS([], $$, $sd)[0].json;
     check("callback save -> payload", saved.cbAction === "save" && saved.amount === 135 && saved.userId === "telegram_1", saved);
+    check("callback save passes photo through", saved.photoData === "PHOTO64" && saved.photoMime === "image/png", saved);
     // second tap: stale
     const saved2 = fnS([], $$, $sd)[0].json;
     check("callback double-tap stale", saved2.cbAction === "none" && saved2.replyText.includes("No pending receipt"), saved2);
@@ -637,6 +641,31 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
     const keys = Object.keys(staticStore.pendingScans || {});
     check("confirmation parks scan", keys.length === 1 && out.saveId === keys[0] && out.replyText.includes("Save"), out);
     check("confirmation stores payload", staticStore.pendingScans[keys[0]].payload.amount === 135, staticStore.pendingScans[keys[0]]);
+
+    // Photo parking: Extract Image output is stashed with the pending scan
+    {
+      const store2 = {};
+      const $sd2 = (t) => store2;
+      const exImg = { imageBase64: "PHOTO64", mimeType: "image/jpeg" };
+      const $p = (n) => ({ first: () => ({ json: n === "Classify Update" ? c : (n === "Extract Image" ? exImg : scanRes) }) });
+      const fnP = new Function("items", "$", "$getWorkflowStaticData", codeOf("Build Scan Confirmation"));
+      const outP = fnP([], $p, $sd2)[0].json;
+      const k = Object.keys(store2.pendingScans)[0];
+      check("confirmation parks photo", store2.pendingScans[k].photoData === "PHOTO64" && store2.pendingScans[k].photoMime === "image/jpeg", store2.pendingScans[k]);
+      check("confirmation footer mentions photo", outP.replyText.includes("attached to the entry"), outP.replyText);
+    }
+    // Oversized photos (> 800k base64) are skipped - entry still saves
+    {
+      const store3 = {};
+      const $sd3 = (t) => store3;
+      const bigImg = { imageBase64: "x".repeat(800001), mimeType: "image/jpeg" };
+      const $b = (n) => ({ first: () => ({ json: n === "Classify Update" ? c : (n === "Extract Image" ? bigImg : scanRes) }) });
+      const fnB = new Function("items", "$", "$getWorkflowStaticData", codeOf("Build Scan Confirmation"));
+      const outB = fnB([], $b, $sd3)[0].json;
+      const k3 = Object.keys(store3.pendingScans)[0];
+      check("oversized photo skipped", store3.pendingScans[k3].photoData === "", store3.pendingScans[k3]);
+      check("oversized photo footer omitted", !outB.replyText.includes("attached to the entry"), outB.replyText);
+    }
   }
 
   // Build Ask Context: builds the Gemini body from tx rows
@@ -681,6 +710,36 @@ check("help mentions join", runCode("Classify Update", mkUpdate("/help"))[0].jso
     // second 'save' -> stale
     const stale = fnR([], $$2, $sd)[0].json;
     check("second text save is stale", stale.cbAction === "none" && stale.replyText.includes("No pending receipt"), stale.replyText);
+  }
+
+  // Build Transaction WITH a parked photo (scan-confirm flow): flags the tx,
+  // mirrors the website's receipt_photos schema in the photo body
+  {
+    const collected = { userId: "telegram_12345", chatId: 555, amount: 135, rawCategory: "Groceries", note: "REL", txDate: today, merchant: "REL", source: "telegram_receipt", dateAdjusted: false, originalDate: "" };
+    const hhRow = [{ json: { document: { fields: { household_id: { stringValue: "hh-1" }, user_id: { stringValue: "telegram_12345" } } } } }];
+    const nodeData = {
+      "Collect Categories": [collected],
+      "Read Callback": [{ photoData: "PHOTO64", photoMime: "image/png", cbAction: "save" }],
+    };
+    const $ = (n) => ({ first: () => ({ json: nodeData[n][0] }) });
+    const fn = new Function("items", "$", codeOf("Build Transaction"));
+    const tx = fn(hhRow, $)[0].json;
+    const body = JSON.parse(tx.firestoreBody);
+    check("scan tx flags has_receipt_photo", body.fields.has_receipt_photo.booleanValue === true, body.fields.has_receipt_photo);
+    const pb = JSON.parse(tx.photoFirestoreBody);
+    check("photo body schema", pb.fields.image.stringValue === "PHOTO64" && pb.fields.size.integerValue === "7" && pb.fields.mime.stringValue === "image/png" && pb.fields.user_id.stringValue === "telegram_12345", pb.fields);
+    check("photo body household mirrors tx", pb.fields.household_id.stringValue === "hh-1", pb.fields.household_id);
+    check("photo docId equals tx docId", typeof tx.docId === "string" && tx.docId.length > 2, tx.docId);
+  }
+
+  // Finalize Transaction: restores the Build Transaction payload after the
+  // photo HTTP write replaced item json
+  {
+    const bt = { docId: "tg1", firestoreBody: '{"fields":{"note":{"stringValue":"REL"}}}', photoFirestoreBody: '{"fields":{}}' };
+    const $ = (n) => ({ first: () => ({ json: bt }) });
+    const fn = new Function("items", "$", codeOf("Finalize Transaction"));
+    const out = fn([{ json: { fields: { name: "projects/p/databases/d/documents/receipt_photos/tg1" } } }], $)[0].json;
+    check("finalize restores tx payload", out.docId === "tg1" && out.firestoreBody === bt.firestoreBody && out.photoFirestoreBody === bt.photoFirestoreBody, out);
   }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -93,5 +93,29 @@ drules.forEach((rule, idx) => {
   else { console.log(`BAD dispatch "${key}" -> ${target} (expected ${want})`); bad++; }
 });
 
+// Receipt photo branch switch: photo present -> photo writer; absent -> straight to the tx write
+{
+  const psw = w.nodes.find((n) => n.name === "Has Receipt Photo?");
+  if (!psw) { console.log("BAD: Has Receipt Photo? node missing"); bad++; }
+  else {
+    const pconns = w.connections["Has Receipt Photo?"].main;
+    const keys = psw.parameters.rules.values.map((r) => r.outputKey);
+    const wants = { "With Photo": "Write Receipt Photo", "No Photo": "Create Transaction" };
+    keys.forEach((k, idx) => {
+      const target = pconns[idx] && pconns[idx][0] && pconns[idx][0].node;
+      if (target === wants[k]) console.log(`OK  photo switch "${k}" -> ${target}`);
+      else { console.log(`BAD photo switch "${k}" -> ${target} (expected ${wants[k]})`); bad++; }
+    });
+    // downstream: photo writer restores the tx payload before the tx write
+    if (pconns[0][0].node === "Write Receipt Photo") {
+      const chain = w.connections["Write Receipt Photo"].main[0][0].node;
+      const back = w.connections["Finalize Transaction"].main[0][0].node;
+      if (chain === "Finalize Transaction" && back === "Create Transaction") {
+        console.log("OK  photo write chain -> Finalize Transaction -> Create Transaction");
+      } else { console.log("BAD photo write chain", { chain, back }); bad++; }
+    }
+  }
+}
+
 console.log(bad === 0 ? "\nSWITCH WIRING CORRECT" : `\n${bad} WIRING PROBLEMS`);
 process.exit(bad ? 1 : 0);

@@ -1,11 +1,12 @@
-﻿// Generator for n8n/expense-planner-bot.json â€” run: node gen-workflow.cjs
+﻿// Generator for n8n/expense-planner-bot.json - run: npm run bot:generate
 const fs = require("fs");
 
 const PROJECT_ID = "gen-lang-client-0213350901";
 const DATABASE_ID = "ai-studio-59a52c44-ee54-464b-8932-111bd2bc67b5";
 
+// Deterministic node IDs: regenerating is idempotent (no random churn in git diffs).
 let uidCounter = 0;
-const uid = () => "node-" + (++uidCounter).toString().padStart(2, "0") + "-" + Math.random().toString(36).slice(2, 8);
+const uid = () => "node-" + (++uidCounter).toString().padStart(2, "0");
 
 // ---------- shared node factories ----------
 
@@ -532,6 +533,19 @@ const classifyCode = [
   "  return [{ json: out, binary: items[0].binary }];",
   "}",
   "",
+  "// Confirm/discard words confirm the most recent pending receipt scan (the",
+  "// same action as tapping the inline Save/Discard buttons). Routed through",
+  "// the callback intent - Read Callback resolves the user's latest pending",
+  "// scan from workflow static data.",
+  "const confirmWord = text.match(/^\\/?\\s*(save|saved|confirm|yes|yeah|yep|ok|keep|store)\\b/i);",
+  "const discardWord = text.match(/^\\/?\\s*(discard|drop|delete|no|nope|cancel|skip|abort)\\b/i);",
+  "if (confirmWord || discardWord) {",
+  "  out.intent = 'callback';",
+  "  out.cbAction = confirmWord ? 'save' : 'discard';",
+  "  out.cbId = ''; // resolved per-user in Read Callback",
+  "  return [{ json: out, binary: items[0].binary }];",
+  "}",
+  "",
   "// Natural-language expense logging: plain (non-slash) short text goes to",
   "// the Gemini parser instead of the fallback message.",
   "if (!text.startsWith('/') && text.length > 2 && text.length <= 120) {",
@@ -632,7 +646,9 @@ const parseScanCode = [
   "  // surface the REAL cause instead of the downstream JSON.parse message.",
   "  if (j && j.error && !j.candidates) {",
   "    const upstream = String(j.error);",
-  "    if (/429/.test(upstream)) {",
+  "    if (/credential/i.test(upstream)) {",
+  "      error = 'Gemini credential is not assigned - open the n8n editor, select the Header Auth (x-goog-api-key) credential on the Gemini Scan / Gemini Scan Fallback nodes';",
+  "    } else if (/429/.test(upstream)) {",
   "      error = 'Gemini free-tier rate limit hit - wait about a minute, then send the photo again';",
   "    } else if (/40[0134]/.test(upstream)) {",
   "      error = 'Gemini API rejected the request: ' + upstream.slice(0, 180);",
@@ -844,6 +860,17 @@ const buildTransactionCode = [
   "  note = words.slice(matchedWords).join(' ').trim() || (p.note || '') || finalCategory || 'Telegram entry';",
   "}",
   "",
+  "// Receipt photo (scan-confirm flow only): Read Callback passes the parked",
+  "// photo through. Other flows (/spent, natural language) never executed that",
+  "// node, so the try/catch leaves photoData empty and no photo is stored.",
+  "let photoData = '';",
+  "let photoMime = 'image/jpeg';",
+  "try {",
+  "  const rc = $('Read Callback').first().json;",
+  "  photoData = rc.photoData || '';",
+  "  photoMime = rc.photoMime || 'image/jpeg';",
+  "} catch (e) { photoData = ''; }",
+  "",
 "// Build the Firestore REST document body with EXPLICIT field types.",
   "// CRITICAL: date must be stringValue - the n8n Firestore node auto-converts",
   "// date-like strings to timestamps, which breaks the web app's string range queries.",
@@ -858,8 +885,25 @@ const buildTransactionCode = [
   "  payment_mode: { stringValue: 'UPI' },",
   "  source: { stringValue: p.source },",
   "  created_at: { timestampValue: new Date().toISOString() },",
+  "  has_receipt_photo: { booleanValue: !!photoData },",
   "};",
   "const firestoreBody = JSON.stringify({ fields: txFields });",
+  "",
+  "// Photo doc for receipt_photos/{docId} - the SAME schema the website's",
+  "// lazy paperclip viewer reads: { user_id, household_id?, image, mime,",
+  "// size (base64 length, int), created_at }. Ownership mirrors the",
+  "// transaction so the Firestore rules show it to household members.",
+  "let photoFirestoreBody = '';",
+  "if (photoData) {",
+  "  photoFirestoreBody = JSON.stringify({ fields: {",
+  "    user_id: { stringValue: p.userId },",
+  "    ...(householdId ? { household_id: { stringValue: householdId } } : {}),",
+  "    image: { stringValue: photoData },",
+  "    mime: { stringValue: photoMime },",
+  "    size: { integerValue: String(photoData.length) },",
+  "    created_at: { timestampValue: new Date().toISOString() },",
+  "  } });",
+  "}",
   "",
   "return [{ json: {",
   "  docId: 'tg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),",
@@ -877,7 +921,15 @@ const buildTransactionCode = [
   "  date_adjusted: !!p.dateAdjusted,",
   "  original_date: p.originalDate || '',",
   "  firestoreBody,",
+  "  photoFirestoreBody,",
   "} }];",
+].join("\n");
+
+// After the photo doc is written (Write Receipt Photo), restore the Build
+// Transaction payload - the HTTP response replaced the item json, but Create
+// Transaction still needs docId + firestoreBody.
+const finalizeTransactionCode = [
+  "return [{ json: $('Build Transaction').first().json }];",
 ].join("\n");
 
 const buildBudgetQueryCode = [
@@ -1572,12 +1624,31 @@ const buildScanConfirmationCode = [
   "const keys = Object.keys(staticData.pendingScans);",
   "while (keys.length >= 20) { delete staticData.pendingScans[keys.shift()]; }",
   "",
-  "const saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
-  "staticData.pendingScans[saveId] = { payload, created: Date.now() };",
+  "// Stash the receipt photo (base64 from Extract Image) so it can be stored",
+  "// in receipt_photos/{txId} when the user confirms. Firestore docs cap at",
+  "// ~1MB; the website's rule budget is 800000 base64 chars, so oversized",
+  "// photos are skipped - the entry still saves without a photo.",
+  "let photoData = '';",
+  "let photoMime = 'image/jpeg';",
+  "try {",
+  "  const ex = $('Extract Image').first().json;",
+  "  if (ex && ex.imageBase64 && ex.imageBase64.length <= 800000) {",
+  "    photoData = ex.imageBase64;",
+  "    photoMime = ex.mimeType || 'image/jpeg';",
+  "  }",
+  "} catch (e) { /* no image data - entry still saves without the photo */ }",
   "",
-  "let reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\U{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\U{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\U{1F4C5} ' + scan.date;",
+  "const saveId = 'sc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);",
+  "staticData.pendingScans[saveId] = { payload, created: Date.now(), photoData, photoMime };",
+  "// Per-user pointer so a text reply like 'save' can confirm the latest",
+  "// parked scan without knowing the saveId (Read Callback resolves it).",
+  "if (!staticData.pendingScansByUser) staticData.pendingScansByUser = {};",
+  "staticData.pendingScansByUser[scan.userId] = saveId;",
+  "",
+  "let reply = '\\u{1F50D} <b>Receipt scanned - save it?</b>\\n\\u{1F4B0} ' + scan.amount + '\\n\\u{1F4C2} ' + esc(scan.category || 'Other') + (scan.merchant ? '\\n\\u{1F3EA} ' + esc(scan.merchant) : '') + '\\n\\u{1F4C5} ' + scan.date;",
   "if (scan.dateAdjusted) reply += '\\n\\u2139\\uFE0F (receipt dated ' + scan.originalDate + ' - will be saved under today)';",
-  "reply += '\\n\\n\\u2705 Save or \\u274C Discard below. To fix a value first, send /edit after saving.';",
+  "reply += '\\n\\n\\u2705 Save or \\u274C Discard below - replying \\\"save\\\" or \\\"discard\\\" also work. To fix a value first, save it, then send /edit.';",
+  "if (photoData) reply += '\\n\\u{1F4CE} The receipt photo will be attached to the entry (visible on the website).';",
   "",
   "return [{ json: { chatId: c.chatId, replyText: reply, saveId, cbAction: 'none' } }];",
 ].join("\n");
@@ -1585,15 +1656,22 @@ const buildScanConfirmationCode = [
 const readCallbackCode = [
   "const c = $('Classify Update').first().json;",
   "const staticData = $getWorkflowStaticData('global');",
-  "const pending = (staticData.pendingScans || {})[c.cbId];",
-  "// remove immediately so double-taps can't double-write",
-  "if (staticData.pendingScans && staticData.pendingScans[c.cbId]) delete staticData.pendingScans[c.cbId];",
+  "// Resolve the pending scan: by callback id for inline-button taps, or by",
+  "// the sender's latest parked scan for text confirmations like 'save'.",
+  "let saveId = c.cbId;",
+  "if (!saveId) {",
+  "  saveId = (staticData.pendingScansByUser || {})[c.userId] || '';",
+  "}",
+  "const pending = (staticData.pendingScans || {})[saveId];",
+  "// remove immediately so double-taps and repeated 'save' texts never double-write",
+  "if (staticData.pendingScans && staticData.pendingScans[saveId]) delete staticData.pendingScans[saveId];",
+  "if (staticData.pendingScansByUser && staticData.pendingScansByUser[c.userId] === saveId) delete staticData.pendingScansByUser[c.userId];",
   "",
   "if (!pending) {",
-  "  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'That scan has already been processed or expired. Send the receipt photo again.' } }];",
+  "  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: 'No pending receipt to save. Send a receipt photo first - or tap the Save/Discard buttons under the scan result.' } }];",
   "}",
   "if (c.cbAction === 'save') {",
-  "  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save' }) }];",
+  "  return [{ json: Object.assign({}, pending.payload, { cbAction: 'save', photoData: pending.photoData || '', photoMime: pending.photoMime || 'image/jpeg' }) }];",
   "}",
   "if (c.cbAction === 'discard') {",
   "  return [{ json: { cbAction: 'none', chatId: c.chatId, replyText: '\\u274C Receipt scan discarded.' } }];",
@@ -1666,7 +1744,7 @@ const parseNlCode = [
   "  } }];",
   "}",
   "if (type === 'income' && amount > 0) {",
-  "  return [{ json: { chatId: c.chatId, replyText: '\\U{1F4B0} Income detected: \\u20B9' + amount + '. Log it with: /earned ' + amount + (note ? ' ' + note : '') } }];",
+  "  return [{ json: { chatId: c.chatId, replyText: '\\u{1F4B0} Income detected: \\u20B9' + amount + '. Log it with: /earned ' + amount + (note ? ' ' + note : '') } }];",
   "}",
   "return [{ json: { chatId: c.chatId, replyText: 'I could not read that as an expense. Try /spent [amount] [category], e.g. /spent 250 groceries - or /help.' } }];",
 ].join("\n");
@@ -1756,7 +1834,7 @@ const buildAskReplyCode = [
   "if (!answer) answer = 'Sorry - I could not produce an answer. Try rephrasing your question.';",
   "// Escape for Telegram HTML, then restore safe bold markers",
   "function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (ch) { return '&' + '#' + ch.charCodeAt(0) + ';'; }); }",
-  "return [{ json: { chatId: c.chatId, replyText: '\\U{1F9EE} ' + esc(answer) } }];",
+  "return [{ json: { chatId: c.chatId, replyText: '\\u{1F9EE} ' + esc(answer) } }];",
 ].join("\n");
 
 // ---------- nodes ----------
@@ -2067,6 +2145,10 @@ const nodes = [
     type: "n8n-nodes-base.telegram",
     typeVersion: 1.2,
     position: [620, 1180],
+    // Error-tolerant: text confirmations ('save') have no callback queryId,
+    // so the answerQuery call fails for them - swallow it (button taps still
+    // get answered, clearing the Telegram spinner).
+    onError: "continueRegularOutput",
     parameters: {
       resource: "callback",
       operation: "answerQuery",
@@ -2223,12 +2305,88 @@ const nodes = [
   codeNode("Collect Categories", [980, -140], collectCategoriesCode),
   fsQueryNode("Query Household", [1200, -140], queryHouseholdJson, paramsUserId),
   codeNode("Build Transaction", [1420, -140], buildTransactionCode),
-  fsHttpCreateNode("Create Transaction", [1640, -140], "transactions"),
-  codeNode("Build Budget Query", [1860, -140], buildBudgetQueryCode),
-  fsQueryNode("Query Budgets", [2080, -140], queryBudgetsJson, paramsMonth),
-  codeNode("Collect Budgets", [2300, -140], collectBudgetsCode),
-  fsQueryNode("Query Month Transactions (Budget)", [2520, -140], scopedQueryJson("transactions"), paramsScoped),
-  codeNode("Budget Check & Reply", [2740, -140], budgetCheckReplyCode),
+
+  // Receipt photo storage: when the confirmed scan carries a photo, write it
+  // to receipt_photos/{txId} (same doc the website's paperclip viewer reads)
+  // BEFORE the transaction, so the tx doc's has_receipt_photo flag is true
+  // only when a photo actually exists. Non-scan entries skip this branch.
+  {
+    id: uid(),
+    name: "Has Receipt Photo?",
+    type: "n8n-nodes-base.switch",
+    typeVersion: 3.2,
+    position: [1540, -140],
+    parameters: {
+      rules: {
+        values: [
+          {
+            conditions: {
+              options: { caseSensitive: true, leftValue: "", typeValidation: "loose", version: 2 },
+              conditions: [
+                {
+                  id: "rule-with-photo",
+                  leftValue: "={{ $json.photoFirestoreBody }}",
+                  rightValue: "",
+                  operator: { type: "string", operation: "notEmpty", singleValue: true },
+                },
+              ],
+              combinator: "and",
+            },
+            renameOutput: true,
+            outputKey: "With Photo",
+          },
+          {
+            conditions: {
+              options: { caseSensitive: true, leftValue: "", typeValidation: "loose", version: 2 },
+              conditions: [
+                {
+                  id: "rule-no-photo",
+                  leftValue: "={{ $json.photoFirestoreBody }}",
+                  rightValue: "",
+                  operator: { type: "string", operation: "empty", singleValue: true },
+                },
+              ],
+              combinator: "and",
+            },
+            renameOutput: true,
+            outputKey: "No Photo",
+          },
+        ],
+      },
+      options: {},
+    },
+  },
+  {
+    id: uid(),
+    name: "Write Receipt Photo",
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.2,
+    position: [1560, 40],
+    // A failed photo write must never block saving the expense (mirrors the
+    // website's uploadReceiptPhoto philosophy); the tx keeps its flag and
+    // the viewer shows a graceful load error instead.
+    retryOnFail: true,
+    maxTries: 3,
+    waitBetweenTries: 2000,
+    onError: "continueRegularOutput",
+    parameters: {
+      method: "POST",
+      url: `=https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/receipt_photos?documentId={{ $json.docId }}`,
+      authentication: "predefinedCredentialType",
+      nodeCredentialType: "googleApi",
+      sendBody: true,
+      specifyBody: "json",
+      jsonBody: "={{ $json.photoFirestoreBody }}",
+      options: {},
+    },
+  },
+  codeNode("Finalize Transaction", [1700, 40], finalizeTransactionCode),
+  fsHttpCreateNode("Create Transaction", [1860, -140], "transactions"),
+  codeNode("Build Budget Query", [2080, -140], buildBudgetQueryCode),
+  fsQueryNode("Query Budgets", [2300, -140], queryBudgetsJson, paramsMonth),
+  codeNode("Collect Budgets", [2520, -140], collectBudgetsCode),
+  fsQueryNode("Query Month Transactions (Budget)", [2740, -140], scopedQueryJson("transactions"), paramsScoped),
+  codeNode("Budget Check & Reply", [2960, -140], budgetCheckReplyCode),
   telegramSendNode(
     "Send Expense Reply",
     [2960, -140],
@@ -2316,6 +2474,24 @@ const nodes = [
   fsQueryNode("Query My Transactions", [620, 460], queryUserTransactionsJson, paramsUserId),
   codeNode("Build Undo", [840, 460], buildUndoCode),
   fsDeleteNode("Delete Last Transaction", [1060, 460]),
+  // Also remove the receipt photo doc (bot-scanned or website-attached) so
+  // orphaned images don't accumulate. 404 (no photo on that entry) is
+  // expected and swallowed - the undo reply always proceeds.
+  {
+    id: uid(),
+    name: "Delete Receipt Photo",
+    type: "n8n-nodes-base.httpRequest",
+    typeVersion: 4.2,
+    position: [1180, 460],
+    onError: "continueRegularOutput",
+    parameters: {
+      method: "DELETE",
+      url: `=https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/receipt_photos/{{ $('Build Undo').first().json.deleteDocId }}`,
+      authentication: "predefinedCredentialType",
+      nodeCredentialType: "googleApi",
+      options: {},
+    },
+  },
   telegramSendNode(
     "Reply Undo",
     [1280, 460],
@@ -2531,7 +2707,8 @@ const connections = {
     main: [[conn("Build Undo"), conn("Build Recent Reply"), conn("Build Export CSV"), conn("Build Edit"), conn("Build Ask Context")]],
   },
   "Build Undo": { main: [[conn("Delete Last Transaction")]] },
-  "Delete Last Transaction": { main: [[conn("Reply Undo")]] },
+  "Delete Last Transaction": { main: [[conn("Delete Receipt Photo")]] },
+  "Delete Receipt Photo": { main: [[conn("Reply Undo")]] },
   "Build Export CSV": { main: [[conn("Send Export Document")]] },
   "Query Categories (List)": { main: [[conn("Build Categories Reply")]] },
   "Query Household (Hub)": { main: [[conn("Dispatch After Household")]] },
@@ -2674,7 +2851,15 @@ const connections = {
   "Query Categories": { main: [[conn("Collect Categories")]] },
   "Collect Categories": { main: [[conn("Query Household")]] },
   "Query Household": { main: [[conn("Build Transaction")]] },
-  "Build Transaction": { main: [[conn("Create Transaction")]] },
+  "Build Transaction": { main: [[conn("Has Receipt Photo?")]] },
+  "Has Receipt Photo?": {
+    main: [
+      [conn("Write Receipt Photo")], // scan-confirm entries: store the photo
+      [conn("Create Transaction")], // /spent, natural language, oversized photos
+    ],
+  },
+  "Write Receipt Photo": { main: [[conn("Finalize Transaction")]] },
+  "Finalize Transaction": { main: [[conn("Create Transaction")]] },
   "Create Transaction": { main: [[conn("Build Budget Query")]] },
   "Build Budget Query": { main: [[conn("Query Budgets")]] },
   "Query Budgets": { main: [[conn("Collect Budgets")]] },
@@ -2719,6 +2904,7 @@ if (!outPath) {
 fs.mkdirSync(require("path").dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(workflow, null, 2));
 console.log("Wrote " + outPath + " with " + nodes.length + " nodes");
+
 
 
 
