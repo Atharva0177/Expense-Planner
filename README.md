@@ -1346,7 +1346,7 @@ See [Docker](#docker) section for containerized deployment options
 ### Implemented Security Controls
 
 - **Firestore Security Rules** (`firestore.rules`):
-  - Per-collection rules with true least-privilege: reads allowed for the owner (`user_id`) or household members; writes owner-only; `system` categories read-only; default-deny for everything else
+  - Per-collection rules with true least-privilege: reads **and management (edit/delete)** allowed for the owner (`user_id`) or household members — the app shows household-wide lists with edit/delete buttons, and bot-logged entries are stamped `telegram_<tg-id>` so they're only reachable via the household clause; creates stay owner-stamped; `system` categories read-only; default-deny for everything else
   - Household membership is verified through a deterministic anchor doc (`household_members/{uid}`) that the app self-heals in `getHhId()` and maintains on join/leave/create; invites live at `invites/{code}` so rules can verify a pending, unexpired invite by path — no more "any signed-in user can read/write the whole database"
   - **Deploy them**: Firebase console → Firestore → select the named database (`ai-studio-59a52c44-...`) → Rules tab → paste `firestore.rules` → Publish (or `firebase deploy --only firestore:rules`)
   - Migration note: users whose only membership is a legacy auto-ID doc regain access automatically if they created their household (self-heal, founder clause); legacy *invite-joined* members need a one-time manual anchor doc or a re-invite

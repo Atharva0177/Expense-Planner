@@ -204,7 +204,8 @@ from `n8n/classify-update.js`, or `npm run bot:generate` and re-import.
 ## Firestore security rules (deploy once)
 
 `firestore.rules` in the repo root contains least-privilege rules (owner or
-household-member reads, owner-only writes, default-deny). **They only protect
+household-member reads **and management** — edit/delete — of household entries,
+owner-stamped creates, default-deny). **They only protect
 the database once deployed**:
 
 1. Firebase console → Firestore → select the named database
