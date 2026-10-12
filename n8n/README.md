@@ -265,6 +265,15 @@ secrets, no manual `setWebhook` scripts. n8n registers and secures the Telegram
 webhook automatically (Telegram only allows one webhook per bot, so activating
 this workflow cleanly replaces any previously registered worker webhook).
 
+## Hosting: your PC (default) or free 24/7
+
+The default setup below runs n8n in Docker on your PC with ngrok for public
+HTTPS — fine for development, but your PC has to stay on. To run the bot
+**24/7 for free** on an Oracle Cloud Always Free VM (direct Let's Encrypt
+HTTPS via a free DuckDNS hostname, no ngrok), follow
+**[ORACLE-HOSTING.md](ORACLE-HOSTING.md)** — it reuses this same repo and
+compose file via the `oracle` profile (`n8n-server` + `caddy` services).
+
 ## Setup
 
 ### 1. Infrastructure

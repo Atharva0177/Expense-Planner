@@ -57,6 +57,7 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
   - **Daily 9 AM auto-processing of due recurring rules** — something the website only does when its Recurring tab is opened
   - Multi-receipt albums, `/edit` for the last entry, a native Telegram command menu (`/setup-menu`), and HTML-escaped / CSV-injection-guarded replies
   - Everything writes the same Firestore collections as the website, so bot entries appear on the dashboard instantly and vice versa
+  - Runs in Docker on your PC (ngrok HTTPS) or **24/7 free on an Oracle Cloud Always Free VM** — see `n8n/ORACLE-HOSTING.md`
 - **Multi-User Household Support**: Create or join households with role-based permissions (primary, spouse, dependent)
 - **Comprehensive Financial Tracking**:
   - Income tracking with detailed breakdown (basic, HRA, allowances, bonuses, deductions)

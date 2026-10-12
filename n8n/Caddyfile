@@ -1,0 +1,14 @@
+# Caddy reverse proxy for n8n on the Oracle Cloud Always Free VM.
+# Started by: docker compose --profile oracle up -d n8n-server caddy
+#
+# N8N_HOST comes from .env - set it to your free DuckDNS hostname
+# (e.g. expenseplanner.duckdns.org). On first start Caddy obtains a Let's
+# Encrypt certificate automatically; this requires ports 80 + 443 reachable
+# from the internet (security list + iptables, see n8n/ORACLE-HOSTING.md).
+# Renewals are automatic, and n8n's websockets work through reverse_proxy
+# out of the box.
+
+{$N8N_HOST} {
+	encode zstd gzip
+	reverse_proxy n8n-server:5678
+}

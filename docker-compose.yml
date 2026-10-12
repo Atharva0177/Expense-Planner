@@ -71,5 +71,60 @@ services:
   #   environment:
   #     - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN:-}
 
+  # ---- Free 24/7 hosting: Oracle Cloud Always Free VM ----
+  # Full guide: n8n/ORACLE-HOSTING.md. Runs the SAME n8n workflow without
+  # ngrok: Caddy fronts n8n with automatic Let's Encrypt HTTPS on a free
+  # DuckDNS hostname. Start on the VM with:
+  #   docker compose --profile oracle up -d n8n-server caddy
+  # IMPORTANT: never run this at the same time as the local `n8n` profile -
+  # both register the same Telegram bot webhook and would fight over messages.
+  n8n-server:
+    image: n8nio/n8n:latest
+    container_name: expense_planner_n8n_server
+    restart: unless-stopped
+    profiles:
+      - oracle
+    ports:
+      # Editor fallback via SSH tunnel only (ssh -L 5678:localhost:5678 ...);
+      # the public entry point is Caddy on 443.
+      - "127.0.0.1:5678:5678"
+    environment:
+      # Use the SAME N8N_ENCRYPTION_KEY as your local instance if you migrate
+      # the data volume - otherwise saved credentials cannot be decrypted.
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-}
+      # Your DuckDNS hostname, e.g. expenseplanner.duckdns.org. Leaving it as
+      # "localhost" breaks webhook registration on the VM.
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+    volumes:
+      - n8n_server_data:/home/node/.n8n
+
+  caddy:
+    image: caddy:2
+    container_name: expense_planner_caddy
+    restart: unless-stopped
+    profiles:
+      - oracle
+    depends_on:
+      - n8n-server
+    ports:
+      - "80:80" # Let's Encrypt HTTP-01 challenge + redirect to https
+      - "443:443" # n8n editor + webhooks (HTTPS)
+    environment:
+      # Caddyfile serves this host and auto-obtains its Let's Encrypt cert.
+      - N8N_HOST=${N8N_HOST:-localhost}
+    volumes:
+      - ./n8n/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   n8n_data:
+  n8n_server_data:
+  caddy_data:
+  caddy_config:
