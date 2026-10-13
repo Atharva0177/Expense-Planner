@@ -17,11 +17,14 @@ ENV N8N_LISTEN_ADDRESS=0.0.0.0 \
     GENERIC_TIMEZONE=Asia/Kolkata \
     TZ=Asia/Kolkata \
     N8N_DIAGNOSTICS_ENABLED=false \
-    N8N_RUNNERS_ENABLED=false
+    N8N_RUNNERS_MAX_CONCURRENCY=1
 
-# N8N_RUNNERS_ENABLED=false runs Code nodes in-process instead of separate
-# task-runner subprocesses: roughly halves memory use so n8n fits a 512 MB
-# free instance.
+# n8n 2.x always runs Code nodes in separate task-runner processes (the old
+# N8N_RUNNERS_ENABLED=false toggle no longer exists). Capping concurrency at
+# one serialized code-node execution bounds runner memory on a 512 MB free
+# instance; a single-user Telegram bot never needs more.
+# The Postgres SSL toggle is DB_POSTGRESDB_SSL_ENABLED in 2.x (renamed from
+# DB_POSTGRESDB_SSL) - set in render.yaml, verified against 2.42.5.
 
 EXPOSE 7860
 

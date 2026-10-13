@@ -40,7 +40,7 @@ services:
         value: postgresdb
       - key: DB_POSTGRESDB_PORT
         value: "5432"
-      - key: DB_POSTGRESDB_SSL
+      - key: DB_POSTGRESDB_SSL_ENABLED
         value: "true"
       - key: EXECUTIONS_DATA_PRUNE
         value: "true"

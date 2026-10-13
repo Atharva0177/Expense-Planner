@@ -20,8 +20,8 @@ Pinger --GET /healthz every 10 min--> keeps the service awake
 
 **Honest caveats before you start**
 
-- Render's free instances have **512 MB RAM**. The Dockerfile disables n8n's
-  separate task-runner processes (`N8N_RUNNERS_ENABLED=false`) to fit — the
+- Render's free instances have **512 MB RAM**. The Dockerfile caps task-runner
+  concurrency at one (`N8N_RUNNERS_MAX_CONCURRENCY=1`) to bound memory — the
   bot runs fine; the n8n **editor UI can feel sluggish** when you open it.
 - Free services **sleep after 15 minutes without inbound traffic** — the
   pinger (Step 5) is MANDATORY here, not optional.
@@ -118,8 +118,12 @@ Render dashboard → the service → **Manual Deploy → Deploy latest commit**
 
 - **Build fails** → Render → Events: usually a typo in a `DB_POSTGRESDB_*`
   value; the build itself needs no secrets.
-- **Boot loop / "Runtime error"** → Logs: most often `DB_POSTGRESDB_SSL`
-  missing (it's in render.yaml, verify it applied) or a wrong DB host.
+- **Boot loop / "connection is insecure (try using `sslmode=require`)"** →
+  n8n 2.x renamed the SSL toggle to **`DB_POSTGRESDB_SSL_ENABLED`** (older
+  guides say `DB_POSTGRESDB_SSL`, which is silently ignored — that's what
+  this error means). It's already set correctly in `render.yaml`.
+- **"Postgres X is not supported" warnings** → informational for Neon
+  (managed Postgres 17); the bot works regardless.
 - **First message after idle is slow / one failure** → Neon waking; it
   auto-resumes in seconds and Telegram retries the delivery.
 - **Bot silent for hours** → the pinger stopped: check cron-job.org's
