@@ -249,16 +249,106 @@ with no visible error. If lists look empty right after linking the bot:
 
 ## Architecture
 
-```
-Telegram ──▶ Telegram Trigger (n8n webhook, auto-registered)
-              └─ Classify Update (Code) ─▶ Route by Intent (Switch)
-                   ├─ Expense text ──▶ Query Categories ─▶ Query Household
-                   │      └─ (receipt photo ─▶ Gemini Scan ─▶ same pipeline)
-                   │            └─ Build Tx ─▶ Create Transaction
-                   │                 └─ Budget check ─▶ Send Expense Reply
-                   ├─ Income ─▶ Create Income Entry ─▶ Reply
-                   ├─ /summary ─▶ Query Month Transactions ─▶ Reply
-                   └─ /help, unknown ─▶ Send Help
+The workflow is **118 nodes, 2 triggers**, generated from
+`generate-workflow.cjs` (`npm run bot:generate`). Logical flow — boxes
+chained with `→` inside a label are sequential nodes collapsed for
+readability:
+
+```mermaid
+flowchart TD
+    subgraph INGEST["Ingest & classify"]
+        U(["📱 Telegram chat"]) -->|"updates: messages · photos · button taps"| TR["Telegram Trigger<br/>webhook, auto-registered · user-ID allowlist"]
+        TR --> CL["Classify Update (Code)<br/>commands & plain text · photos · documents · callbacks<br/>maps 'save' / 'discard' replies to the confirm intent"]
+        CL --> RT{"Route by Intent<br/>Switch · 27 outputs"}
+    end
+
+    subgraph SCAN["Receipt scan (photo intent)"]
+        RT -->|photo| GP["Get Telegram Photo<br/>largest variant via Bot API"]
+        GP --> EI["Extract Image<br/>base64 · magic-byte + size guard"]
+        EI --> IOK{"Image OK?"}
+        IOK -->|no| RSF["Reply Scan Failed<br/>friendly cause: rate limit · credentials · bad photo"]
+        IOK -->|yes| ALB{"Is Album Photo?"}
+        ALB -->|"solo"| PR["Processing receipt… (progress msg)"]
+        ALB -->|"album (skip spam)"| GS["Gemini Scan<br/>pro model · strict JSON schema · temp 0"]
+        PR --> GS
+        GS --> PS["Parse Scan<br/>amount window 0..₹50L · date sanity · merchant junk filter"]
+        PS --> SOK{"Scan OK?"}
+        SOK -->|no| GSF["Gemini Scan Fallback<br/>flash model → Parse Scan Fallback"]
+        GSF --> SOF{"Scan OK?"}
+        SOF -->|no| RSF
+        SOK -->|yes| BSC
+        SOF -->|yes| BSC["Build Scan Confirmation<br/>park {payload, photo ≤ 800 KB} in static data<br/>+ per-user pointer"]
+        BSC --> SSC["Send Scan Confirmation<br/>inline ✅ Save / ❌ Discard buttons"]
+    end
+
+    subgraph CONFIRM["Confirm (callback intent)"]
+        RT -->|"button tap · or typed 'save' / 'discard'"| AC["Answer Callback<br/>error-tolerant: text confirms carry no queryId"]
+        AC --> RC["Read Callback<br/>resolve parked scan by id or per-user pointer<br/>consume once → double-taps are inert"]
+        RC --> ISR{"Is Save?"}
+        ISR -->|"discard · stale"| RCR["Reply Callback Result"]
+    end
+
+    subgraph EXPENSE["Shared expense pipeline (also /spent & parsed natural language)"]
+        ISR -->|save| QC["Query Categories → Collect Categories<br/>→ Query Household → Build Transaction<br/>typed REST body · has_receipt_photo flag"]
+        QC --> HRP{"Has Receipt Photo?"}
+        HRP -->|"with photo"| WRP["Write Receipt Photo<br/>POST receipt_photos/txId · error-tolerant"]
+        WRP --> FIN["Finalize Transaction<br/>restore tx payload"]
+        HRP -->|"no photo"| CTX["Create Transaction<br/>POST transactions/txId"]
+        FIN --> CTX
+        CTX --> BQ["Build Budget Query → Query Budgets<br/>→ Collect Budgets → Query Month Transactions"]
+        BQ --> BCR["Budget Check & Reply<br/>household-wide ≥ 80% / over-budget warnings"]
+        BCR --> SER["Send Expense Reply"]
+    end
+
+    subgraph CMDS["Command branches"]
+        RT -->|"/earned"| INC["Query Household (Income) → Build Income Entry<br/>→ Create Income Entry → Reply Income"]
+        RT -->|"plain text"| NLP["Build NL Prompt → Gemini NL Parse → Parse NL"]
+        NLP -->|expense| QC
+        NLP -->|"answer / hint"| SLR["Send List Reply"]
+        RT -->|"/undo"| UND["Query My Transactions → Build Undo<br/>→ Delete Last Transaction → Delete Receipt Photo<br/>→ Reply Undo"]
+        RT -->|"/edit · /ask · /recent · /export"| QMT["Query My Transactions"]
+        QMT -->|"/edit"| EDT["Build Edit → Write Edit (batch) → Reply Edit"]
+        QMT -->|"/ask"| ASK["Build Ask Context → Gemini Ask → Build Ask Reply"]
+        QMT -->|"/recent · /export"| RCX["Build Recent Reply / Build Export CSV"]
+        RT -->|"/summary"| SUM["Query Month Transactions (Summary) → Collect Summary Tx<br/>→ Query Month Incomes → Build Summary Reply"]
+        RT -->|"/categories"| CATL["Query Categories (List) → Build Categories Reply"]
+        RT -->|"/budget · /budgets · /goal · /goals · /contribute · /recurring · /recurrings · /loan · /loans · /members · /investments"| HUB["Query Household (Hub) → Dispatch After Household<br/>→ per-command builder → Firestore create / batch writer → reply"]
+        RT -->|"/join"| JNV["Query Invites → Validate Invite → Invite Valid?"]
+        JNV -->|valid| JOK["Create/Update Membership anchor<br/>→ Mark Invite Accepted → Reply Join Success"]
+        JNV -->|invalid| JNO["Reply Join Failed"]
+        RT -->|"/help · unknown"| HLP["Send Help"]
+        RT -->|"/setup-menu"| MEN["Register Bot Menu (setMyCommands) → Reply Menu"]
+        ASK --> SLR
+        RCX --> SLR
+        CATL --> SLR
+        SUM --> SLR
+    end
+
+    subgraph DAILY["Daily automation"]
+        CRON(["⏰ Schedule Trigger · daily 9 AM IST"]) --> DRR["Query Due Recurring Rules<br/>→ Process Recurring → Write Recurring Batch"]
+    end
+
+    GEM(["✨ Gemini API"])
+    TGA(["🤖 Telegram Bot API"])
+    FDB[("Firestore<br/>transactions · income_entries · budgets · goals<br/>loans · recurring_rules · members · receipt_photos")]
+
+    GS -.->|structured output| GEM
+    GSF -.-> GEM
+    NLP -.-> GEM
+    ASK -.-> GEM
+    GP -.->|"getFile + download"| TGA
+    SSC -.->|"messages + inline buttons"| TGA
+    SER -.-> TGA
+    QC -.->|service account| FDB
+    CTX -.-> FDB
+    WRP -.-> FDB
+    UND -.-> FDB
+    HUB -.-> FDB
+    DRR -.-> FDB
+
+    style GEM fill:#fbb,stroke:#333
+    style TGA fill:#bde,stroke:#333
+    style FDB fill:#bfb,stroke:#333
 ```
 
 All Firestore access uses the native **Google Cloud Firestore** node with a

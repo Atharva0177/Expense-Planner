@@ -138,7 +138,7 @@ flowchart TD
     B -->|Firestore SDK| C[(Firebase Firestore)]
     B -->|Generative AI API| D[Google Gemini]
     A -->|Static Assets| B
-    E[Telegram Chat] -->|webhook via ngrok| F[n8n Bot Workflow]
+    E[Telegram Chat] -->|webhook| F[n8n Bot Workflow - Render, free 24/7]
     F -->|Firestore REST + service account| C
     F -->|receipt photos| D
 
@@ -158,7 +158,7 @@ flowchart TD
    - Vercel serverless function (`api/scan-receipt.ts`) and Cloudflare Pages Functions (`functions/api/scan-receipt.ts`) for AI receipt processing in serverless environments
 3. **Data Layer**: Firestore for persistent storage with caching layer
 4. **Automation Layer**: the n8n Telegram bot workflow — same Firestore database, service-account-authenticated REST reads/writes, plus a daily Schedule Trigger for recurring-rule processing
-5. **External Services**: Google Gemini AI for receipt processing, Firebase Auth for authentication, ngrok for the bot's public webhook
+5. **External Services**: Google Gemini AI for receipt processing, Firebase Auth for authentication; the bot's public webhook is served by the free Render cloud instance (ngrok is only used for the local development profile)
 
 ### Communication Patterns
 
@@ -166,7 +166,110 @@ flowchart TD
 - API ↔ Firestore: Firebase Admin SDK (direct database access)
 - API ↔ Gemini: HTTP POST to generativelanguage.googleapis.com
 - Client ↔ Gemini (fallback): Direct API calls when configured with client-side key
-- Telegram ↔ n8n: webhook via ngrok static domain; n8n ↔ Firestore: REST API with a Google service account (bypasses security rules); n8n ↔ Gemini: HTTP with structured output
+- Telegram ↔ n8n: webhook (production: free Render instance; local dev: ngrok static domain); n8n ↔ Firestore: REST API with a Google service account (bypasses security rules); n8n ↔ Gemini: HTTP with structured output
+
+### n8n Automation Flow (Telegram Bot)
+
+The bot is a single generated n8n workflow — **118 nodes, 2 triggers** (`n8n/expense-planner-bot.json`, source of truth: `n8n/generate-workflow.cjs`). Boxes chained with `→` inside a label are sequential nodes collapsed for readability:
+
+```mermaid
+flowchart TD
+    subgraph INGEST["Ingest & classify"]
+        U(["📱 Telegram chat"]) -->|"updates: messages · photos · button taps"| TR["Telegram Trigger<br/>webhook, auto-registered · user-ID allowlist"]
+        TR --> CL["Classify Update (Code)<br/>commands & plain text · photos · documents · callbacks<br/>maps 'save' / 'discard' replies to the confirm intent"]
+        CL --> RT{"Route by Intent<br/>Switch · 27 outputs"}
+    end
+
+    subgraph SCAN["Receipt scan (photo intent)"]
+        RT -->|photo| GP["Get Telegram Photo<br/>largest variant via Bot API"]
+        GP --> EI["Extract Image<br/>base64 · magic-byte + size guard"]
+        EI --> IOK{"Image OK?"}
+        IOK -->|no| RSF["Reply Scan Failed<br/>friendly cause: rate limit · credentials · bad photo"]
+        IOK -->|yes| ALB{"Is Album Photo?"}
+        ALB -->|"solo"| PR["Processing receipt… (progress msg)"]
+        ALB -->|"album (skip spam)"| GS["Gemini Scan<br/>pro model · strict JSON schema · temp 0"]
+        PR --> GS
+        GS --> PS["Parse Scan<br/>amount window 0..₹50L · date sanity · merchant junk filter"]
+        PS --> SOK{"Scan OK?"}
+        SOK -->|no| GSF["Gemini Scan Fallback<br/>flash model → Parse Scan Fallback"]
+        GSF --> SOF{"Scan OK?"}
+        SOF -->|no| RSF
+        SOK -->|yes| BSC
+        SOF -->|yes| BSC["Build Scan Confirmation<br/>park {payload, photo ≤ 800 KB} in static data<br/>+ per-user pointer"]
+        BSC --> SSC["Send Scan Confirmation<br/>inline ✅ Save / ❌ Discard buttons"]
+    end
+
+    subgraph CONFIRM["Confirm (callback intent)"]
+        RT -->|"button tap · or typed 'save' / 'discard'"| AC["Answer Callback<br/>error-tolerant: text confirms carry no queryId"]
+        AC --> RC["Read Callback<br/>resolve parked scan by id or per-user pointer<br/>consume once → double-taps are inert"]
+        RC --> ISR{"Is Save?"}
+        ISR -->|"discard · stale"| RCR["Reply Callback Result"]
+    end
+
+    subgraph EXPENSE["Shared expense pipeline (also /spent & parsed natural language)"]
+        ISR -->|save| QC["Query Categories → Collect Categories<br/>→ Query Household → Build Transaction<br/>typed REST body · has_receipt_photo flag"]
+        QC --> HRP{"Has Receipt Photo?"}
+        HRP -->|"with photo"| WRP["Write Receipt Photo<br/>POST receipt_photos/txId · error-tolerant"]
+        WRP --> FIN["Finalize Transaction<br/>restore tx payload"]
+        HRP -->|"no photo"| CTX["Create Transaction<br/>POST transactions/txId"]
+        FIN --> CTX
+        CTX --> BQ["Build Budget Query → Query Budgets<br/>→ Collect Budgets → Query Month Transactions"]
+        BQ --> BCR["Budget Check & Reply<br/>household-wide ≥ 80% / over-budget warnings"]
+        BCR --> SER["Send Expense Reply"]
+    end
+
+    subgraph CMDS["Command branches"]
+        RT -->|"/earned"| INC["Query Household (Income) → Build Income Entry<br/>→ Create Income Entry → Reply Income"]
+        RT -->|"plain text"| NLP["Build NL Prompt → Gemini NL Parse → Parse NL"]
+        NLP -->|expense| QC
+        NLP -->|"answer / hint"| SLR["Send List Reply"]
+        RT -->|"/undo"| UND["Query My Transactions → Build Undo<br/>→ Delete Last Transaction → Delete Receipt Photo<br/>→ Reply Undo"]
+        RT -->|"/edit · /ask · /recent · /export"| QMT["Query My Transactions"]
+        QMT -->|"/edit"| EDT["Build Edit → Write Edit (batch) → Reply Edit"]
+        QMT -->|"/ask"| ASK["Build Ask Context → Gemini Ask → Build Ask Reply"]
+        QMT -->|"/recent · /export"| RCX["Build Recent Reply / Build Export CSV"]
+        RT -->|"/summary"| SUM["Query Month Transactions (Summary) → Collect Summary Tx<br/>→ Query Month Incomes → Build Summary Reply"]
+        RT -->|"/categories"| CATL["Query Categories (List) → Build Categories Reply"]
+        RT -->|"/budget · /budgets · /goal · /goals · /contribute · /recurring · /recurrings · /loan · /loans · /members · /investments"| HUB["Query Household (Hub) → Dispatch After Household<br/>→ per-command builder → Firestore create / batch writer → reply"]
+        RT -->|"/join"| JNV["Query Invites → Validate Invite → Invite Valid?"]
+        JNV -->|valid| JOK["Create/Update Membership anchor<br/>→ Mark Invite Accepted → Reply Join Success"]
+        JNV -->|invalid| JNO["Reply Join Failed"]
+        RT -->|"/help · unknown"| HLP["Send Help"]
+        RT -->|"/setup-menu"| MEN["Register Bot Menu (setMyCommands) → Reply Menu"]
+        ASK --> SLR
+        RCX --> SLR
+        CATL --> SLR
+        SUM --> SLR
+    end
+
+    subgraph DAILY["Daily automation"]
+        CRON(["⏰ Schedule Trigger · daily 9 AM IST"]) --> DRR["Query Due Recurring Rules<br/>→ Process Recurring → Write Recurring Batch"]
+    end
+
+    GEM(["✨ Gemini API"])
+    TGA(["🤖 Telegram Bot API"])
+    FDB[("Firestore<br/>transactions · income_entries · budgets · goals<br/>loans · recurring_rules · members · receipt_photos")]
+
+    GS -.->|structured output| GEM
+    GSF -.-> GEM
+    NLP -.-> GEM
+    ASK -.-> GEM
+    GP -.->|"getFile + download"| TGA
+    SSC -.->|"messages + inline buttons"| TGA
+    SER -.-> TGA
+    QC -.->|service account| FDB
+    CTX -.-> FDB
+    WRP -.-> FDB
+    UND -.-> FDB
+    HUB -.-> FDB
+    DRR -.-> FDB
+
+    style GEM fill:#fbb,stroke:#333
+    style TGA fill:#bde,stroke:#333
+    style FDB fill:#bfb,stroke:#333
+```
+
+Operational details (credentials, hosting, deployment) live in [n8n/README.md](n8n/README.md); the free 24/7 cloud setup is documented in [n8n/RENDER-HOSTING.md](n8n/RENDER-HOSTING.md).
 
 ## Directory Structure
 
