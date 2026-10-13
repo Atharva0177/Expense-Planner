@@ -1,0 +1,50 @@
+# Render Blueprint: deploys the n8n Telegram bot to a FREE web service.
+# Guide: n8n/RENDER-HOSTING.md (no credit card - GitHub login only).
+#
+# Deploy: dashboard.render.com -> New -> Blueprint -> pick this repo.
+# Render reads this file and prompts for the sync:false values (the Neon
+# credentials and secrets) during creation. The public URL is predictable:
+# https://expense-planner-n8n.onrender.com
+services:
+  - type: web
+    name: expense-planner-n8n
+    runtime: docker
+    dockerfilePath: ./n8n/render/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    # Never redeploy automatically: pushes to main are usually website
+    # changes, not bot changes. Deploy manually from the dashboard.
+    autoDeploy: false
+    envVars:
+      # --- secrets you'll be prompted for (sync: false) ---
+      - key: N8N_ENCRYPTION_KEY
+        sync: false # generate with: openssl rand -base64 32 - SAVE IT
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false # from @BotFather
+      - key: N8N_HOST
+        sync: false # expense-planner-n8n.onrender.com (no https://)
+      - key: WEBHOOK_URL
+        sync: false # https://expense-planner-n8n.onrender.com
+      - key: DB_POSTGRESDB_HOST
+        sync: false # from the Neon connection string
+      - key: DB_POSTGRESDB_DATABASE
+        sync: false # e.g. neondb
+      - key: DB_POSTGRESDB_USER
+        sync: false # e.g. neondb_owner
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false # from the Neon connection string
+      # --- fixed values (defaults, no prompt) ---
+      - key: DB_TYPE
+        defaultValue: postgresdb
+      - key: DB_POSTGRESDB_PORT
+        defaultValue: "5432"
+      - key: DB_POSTGRESDB_SSL
+        defaultValue: "true"
+      - key: EXECUTIONS_DATA_PRUNE
+        defaultValue: "true"
+      - key: EXECUTIONS_DATA_MAX_AGE
+        defaultValue: "72" # hours - keeps Neon's 0.5 GB small
+      - key: EXECUTIONS_DATA_PRUNE_MAX_COUNT
+        defaultValue: "1000"

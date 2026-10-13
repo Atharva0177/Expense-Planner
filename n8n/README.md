@@ -269,10 +269,15 @@ this workflow cleanly replaces any previously registered worker webhook).
 
 The default setup below runs n8n in Docker on your PC with ngrok for public
 HTTPS — fine for development, but your PC has to stay on. To run the bot
-**24/7 for free** on an Oracle Cloud Always Free VM (direct Let's Encrypt
-HTTPS via a free DuckDNS hostname, no ngrok), follow
-**[ORACLE-HOSTING.md](ORACLE-HOSTING.md)** — it reuses this same repo and
-compose file via the `oracle` profile (`n8n-server` + `caddy` services).
+**24/7 for free**, pick whichever matches what you have:
+
+- **No credit card** → **[RENDER-HOSTING.md](RENDER-HOSTING.md)**:
+  n8n on a free Render web service with data in a free Neon Postgres and a
+  keep-awake pinger. $0 forever, GitHub/email logins only.
+- **Credit card (verification only, never charged)** →
+  **[ORACLE-HOSTING.md](ORACLE-HOSTING.md)**: Oracle Cloud Always Free ARM
+  VM running this repo's `oracle` compose profile (`n8n-server` + `caddy`,
+  direct Let's Encrypt HTTPS via a free DuckDNS hostname, no ngrok).
 
 ## Setup
 
