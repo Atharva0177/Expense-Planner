@@ -195,6 +195,9 @@ secrets, every push to `main` deploys the workflow to your live n8n via its
 REST API (`n8n/scripts/deploy-workflow.mjs`) — **preserving credential
 assignments and activation state** (credentials are merged by node name from
 the live workflow before the update). Without the secrets the job soft-skips.
+For the free Render instance, `N8N_API_URL` is
+`https://expense-planner-n8n.onrender.com` (and `N8N_API_KEY` is generated in
+its n8n Settings → n8n API).
 After the first auto-deploy, run `/setup-menu` once in Telegram to refresh the
 command menu.
 
@@ -265,19 +268,13 @@ secrets, no manual `setWebhook` scripts. n8n registers and secures the Telegram
 webhook automatically (Telegram only allows one webhook per bot, so activating
 this workflow cleanly replaces any previously registered worker webhook).
 
-## Hosting: your PC (default) or free 24/7
+## Hosting: your PC (development) or free 24/7 (Render)
 
-The default setup below runs n8n in Docker on your PC with ngrok for public
-HTTPS — fine for development, but your PC has to stay on. To run the bot
-**24/7 for free**, pick whichever matches what you have:
-
-- **No credit card** → **[RENDER-HOSTING.md](RENDER-HOSTING.md)**:
-  n8n on a free Render web service with data in a free Neon Postgres and a
-  keep-awake pinger. $0 forever, GitHub/email logins only.
-- **Credit card (verification only, never charged)** →
-  **[ORACLE-HOSTING.md](ORACLE-HOSTING.md)**: Oracle Cloud Always Free ARM
-  VM running this repo's `oracle` compose profile (`n8n-server` + `caddy`,
-  direct Let's Encrypt HTTPS via a free DuckDNS hostname, no ngrok).
+The setup below runs n8n in Docker on your PC with ngrok for public HTTPS —
+the **development environment**. The bot's production home is a **free
+Render web service** with its data in a free Neon Postgres database —
+**$0/month, no credit card, always on** (your PC can be off). Full guide:
+**[RENDER-HOSTING.md](RENDER-HOSTING.md)**.
 
 ## Setup
 

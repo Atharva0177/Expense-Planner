@@ -51,13 +51,13 @@ Built with React/Vite frontend and Node.js/Express backend, the application uses
 - **Payslip / Form 16 Parsing**: upload a payslip image on the Income tab → AI extracts all salary components (basic, HRA, allowances, EPF, TDS, net) and prefills the entry form (`/api/parse-payslip`)
 - **Search Across Everything**: search bar on the Expenses tab matches notes, categories, payment modes, amounts, and dates across **all months**
 - **Telegram Bot (n8n)**: A self-hosted n8n workflow (`n8n/expense-planner-bot.json`, 118 nodes) giving Telegram near-full parity with the website:
-  - Log expenses (`/spent`), natural-language logging (plain text like "spent 250 on groceries"), scan receipt photos with inline Save/Discard confirmation (the photo itself is stored in Firestore and shows up under the entry's 📎 on the website), record income (`/earned`), and undo mistakes (`/undo`)
+  - Log expenses (`/spent`), natural-language logging (plain text like "spent 250 on groceries"), scan receipt photos with inline Save/Discard confirmation (tap the buttons **or just reply "save"/"discard"**; the photo itself is stored in Firestore and shows up under the entry's 📎 on the website), record income (`/earned`), and undo mistakes (`/undo`)
   - Budgets (`/budget`, `/budgets`), savings goals (`/goal`, `/goals`, `/contribute`), loans with full amortization schedules (`/loan`, `/loans`), and recurring rules (`/recurring`, `/recurrings`)
   - Views: monthly summary with savings rate, recent entries, budgets, goals, loans, recurring rules, household members, investments, categories, CSV export - plus `/ask <question>` to chat with your data
   - **Daily 9 AM auto-processing of due recurring rules** — something the website only does when its Recurring tab is opened
   - Multi-receipt albums, `/edit` for the last entry, a native Telegram command menu (`/setup-menu`), and HTML-escaped / CSV-injection-guarded replies
   - Everything writes the same Firestore collections as the website, so bot entries appear on the dashboard instantly and vice versa
-  - Runs in Docker on your PC (ngrok HTTPS), or **24/7 for free with no credit card** on Render + Neon Postgres (`n8n/RENDER-HOSTING.md`), or on an Oracle Cloud Always Free VM (`n8n/ORACLE-HOSTING.md`)
+  - Runs **24/7 for free in the cloud** (the production instance: free Render web service + Neon Postgres, `n8n/RENDER-HOSTING.md`), or locally in Docker on your PC with ngrok HTTPS for development (`docker compose --profile n8n up -d`)
 - **Multi-User Household Support**: Create or join households with role-based permissions (primary, spouse, dependent)
 - **Comprehensive Financial Tracking**:
   - Income tracking with detailed breakdown (basic, HRA, allowances, bonuses, deductions)
@@ -191,11 +191,14 @@ expense-planner/
 │   ├── validators/               # 149-test logic suite + graph/wiring/code validators (npm run bot:validate)
 │   ├── scripts/deploy-workflow.mjs  # CI auto-deploy to live n8n via REST API (credential-preserving)
 │   ├── classify-update.js  # Standalone export of the Classify Update node code (hot-fix pasting)
+│   ├── render/Dockerfile         # n8n image for the free Render cloud instance (bot's production home)
+│   ├── RENDER-HOSTING.md         # Free 24/7 hosting guide: Render + Neon Postgres, no credit card
 │   └── README.md           # Bot setup & operations guide
 ├── public/                 # Static assets
 ├── dist/                   # Build output (generated)
 ├── Dockerfile              # Multi-stage Docker build
-├── docker-compose.yml      # App + `n8n` profile (n8n + ngrok tunnel)
+├── docker-compose.yml      # App + `n8n` profile (local dev: n8n + ngrok tunnel)
+├── render.yaml             # Render Blueprint for the free cloud n8n instance (see n8n/RENDER-HOSTING.md)
 ├── .env.example            # Template for environment variables
 ├── vercel.json             # Vercel platform configuration
 ├── package.json            # Dependencies and scripts
