@@ -35,16 +35,16 @@ services:
         sync: false # e.g. neondb_owner
       - key: DB_POSTGRESDB_PASSWORD
         sync: false # from the Neon connection string
-      # --- fixed values (defaults, no prompt) ---
+      # --- fixed values (no prompt) ---
       - key: DB_TYPE
-        defaultValue: postgresdb
+        value: postgresdb
       - key: DB_POSTGRESDB_PORT
-        defaultValue: "5432"
+        value: "5432"
       - key: DB_POSTGRESDB_SSL
-        defaultValue: "true"
+        value: "true"
       - key: EXECUTIONS_DATA_PRUNE
-        defaultValue: "true"
+        value: "true"
       - key: EXECUTIONS_DATA_MAX_AGE
-        defaultValue: "72" # hours - keeps Neon's 0.5 GB small
+        value: "72" # hours - keeps Neon's 0.5 GB small
       - key: EXECUTIONS_DATA_PRUNE_MAX_COUNT
-        defaultValue: "1000"
+        value: "1000"
