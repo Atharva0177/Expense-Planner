@@ -23,10 +23,6 @@ services:
         sync: false # generate with: openssl rand -base64 32 - SAVE IT
       - key: TELEGRAM_BOT_TOKEN
         sync: false # from @BotFather
-      - key: N8N_HOST
-        sync: false # expense-planner-n8n.onrender.com (no https://)
-      - key: WEBHOOK_URL
-        sync: false # https://expense-planner-n8n.onrender.com
       - key: DB_POSTGRESDB_HOST
         sync: false # from the Neon connection string
       - key: DB_POSTGRESDB_DATABASE
@@ -35,6 +31,13 @@ services:
         sync: false # e.g. neondb_owner
       - key: DB_POSTGRESDB_PASSWORD
         sync: false # from the Neon connection string
+      # --- fixed values (known from the service name - no prompt) ---
+      # n8n 2.x renamed WEBHOOK_URL -> N8N_WEBHOOK_URL (the old name logs a
+      # deprecation warning). These two are constants of this service's URL.
+      - key: N8N_WEBHOOK_URL
+        value: https://expense-planner-n8n.onrender.com
+      - key: N8N_HOST
+        value: expense-planner-n8n.onrender.com
       # --- fixed values (no prompt) ---
       - key: DB_TYPE
         value: postgresdb

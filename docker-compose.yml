@@ -35,7 +35,7 @@ services:
       # Telegram webhook). When using the cloudflared service below, this is
       # the public hostname you configured for the tunnel, e.g.
       # https://n8n.your-domain.com
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       # Bot token is read by the workflow's /setup-menu command ($env)
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - GENERIC_TIMEZONE=Asia/Kolkata
@@ -97,7 +97,7 @@ services:
       - N8N_HOST=${N8N_HOST:-localhost}
       - N8N_PROTOCOL=https
       - N8N_PORT=5678
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - GENERIC_TIMEZONE=Asia/Kolkata
       - TZ=Asia/Kolkata

@@ -17,14 +17,19 @@ ENV N8N_LISTEN_ADDRESS=0.0.0.0 \
     GENERIC_TIMEZONE=Asia/Kolkata \
     TZ=Asia/Kolkata \
     N8N_DIAGNOSTICS_ENABLED=false \
-    N8N_RUNNERS_MAX_CONCURRENCY=1
+    N8N_RUNNERS_MAX_CONCURRENCY=1 \
+    N8N_RUNNERS_GRANT_TOKEN_TTL=300
 
-# n8n 2.x always runs Code nodes in separate task-runner processes (the old
-# N8N_RUNNERS_ENABLED=false toggle no longer exists). Capping concurrency at
-# one serialized code-node execution bounds runner memory on a 512 MB free
-# instance; a single-user Telegram bot never needs more.
+# N8N_RUNNERS_MAX_CONCURRENCY=1 serializes Code-node execution - a
+# single-user bot never needs more, and it bounds runner memory on a
+# 512 MB free instance (n8n 2.x always uses task runners; the old
+# N8N_RUNNERS_ENABLED=false toggle no longer exists).
+# N8N_RUNNERS_GRANT_TOKEN_TTL=300: on the slow free tier the JS runner can
+# take longer than the default 30s grant token to boot, which shows up as
+# "Task runner connection attempt failed: invalid or expired grant token"
+# (403 against the task broker). A 5-minute TTL removes the flapping.
 # The Postgres SSL toggle is DB_POSTGRESDB_SSL_ENABLED in 2.x (renamed from
-# DB_POSTGRESDB_SSL) - set in render.yaml, verified against 2.42.5.
+# DB_POSTGRESDB_SSL) - set in render.yaml, verified against the 2.42.x source.
 
 EXPOSE 7860
 

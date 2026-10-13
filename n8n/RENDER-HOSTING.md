@@ -58,12 +58,13 @@ Pinger --GET /healthz every 10 min--> keeps the service awake
 |---|---|
 | `N8N_ENCRYPTION_KEY` | `openssl rand -base64 32` output (locally: any Git Bash/WSL). **Save it** — reusing it keeps credentials decryptable across future re-deploys |
 | `TELEGRAM_BOT_TOKEN` | your bot token from @BotFather |
-| `N8N_HOST` | `expense-planner-n8n.onrender.com` |
-| `WEBHOOK_URL` | `https://expense-planner-n8n.onrender.com` |
 | `DB_POSTGRESDB_HOST` | `ep-odd-name-123456.ap-southeast-1.aws.neon.tech` |
 | `DB_POSTGRESDB_DATABASE` | `neondb` |
 | `DB_POSTGRESDB_USER` | `neondb_owner` |
 | `DB_POSTGRESDB_PASSWORD` | the password from the string |
+
+The `N8N_HOST` / `N8N_WEBHOOK_URL` values are applied automatically — they
+are constants of the service URL baked into `render.yaml`.
 
 4. **Apply** and wait for the build (~5 min). The public URL is
    `https://expense-planner-n8n.onrender.com` — check **Events/Logs** until
@@ -124,6 +125,16 @@ Render dashboard → the service → **Manual Deploy → Deploy latest commit**
   this error means). It's already set correctly in `render.yaml`.
 - **"Postgres X is not supported" warnings** → informational for Neon
   (managed Postgres 17); the bot works regardless.
+- **"Task runner connection attempt failed: invalid or expired grant token"
+  (403 against the task broker)** → the JS runner booted slower than the
+  default 30-second grant token on the free tier. The Dockerfile sets
+  `N8N_RUNNERS_GRANT_TOKEN_TTL=300`; the runner registers itself on retry
+  (look for `Registered runner "JS Task Runner"`). If it never registers,
+  redeploy once after Neon is warm.
+- **"Failed to start Python task runner... Python 3 is missing"** → harmless;
+  this bot only uses JavaScript Code nodes.
+- **"New primary port detected: 7860. Restarting deploy"** → one-time Render
+  proxy wiring after the first boot, not an error.
 - **First message after idle is slow / one failure** → Neon waking; it
   auto-resumes in seconds and Telegram retries the delivery.
 - **Bot silent for hours** → the pinger stopped: check cron-job.org's
